@@ -1,5 +1,5 @@
 {
+  "framework": "nextjs",
   "installCommand": "npm --prefix ../.. install",
-  "buildCommand": "npm --prefix ../.. run build --workspace @ledgermail/dashboard",
-  "outputDirectory": ".next"
+  "buildCommand": "npm --prefix ../.. run build --workspace @ledgermail/dashboard"
 }
