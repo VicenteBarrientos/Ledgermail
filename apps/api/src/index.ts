@@ -284,6 +284,10 @@ app.post("/api/reparse", async (req, res) => {
 
 // Start service
 const port = config.api.port;
-app.listen(port, () => {
-  logger.info(`LedgerMail REST API service running on port ${port}`);
-});
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  app.listen(port, () => {
+    logger.info(`LedgerMail REST API service running on port ${port}`);
+  });
+}
+
+export default app;
