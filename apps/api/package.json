@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=api/index.js --external:@prisma/client"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=api/index.js --external:@prisma/client && node scripts/copy-engines.js"
   },
   "dependencies": {
     "express": "^4.19.2",
