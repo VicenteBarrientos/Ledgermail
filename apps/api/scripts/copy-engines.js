@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const srcDir = path.resolve(__dirname, "../../database/src/generated/client");
+const srcDir = path.resolve(__dirname, "../../../packages/database/src/generated/client");
 const destDir = path.resolve(__dirname, "../api");
 
 if (!fs.existsSync(srcDir)) {
