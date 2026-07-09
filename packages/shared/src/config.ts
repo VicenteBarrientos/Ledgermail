@@ -1,8 +1,24 @@
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
-// Load environment variables from the root .env file if present
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+// Try loading from current working directory, then check parent directory levels
+let envPath = path.resolve(process.cwd(), ".env");
+if (!fs.existsSync(envPath)) {
+  const pathsToCheck = [
+    path.resolve(process.cwd(), "..", ".env"),
+    path.resolve(process.cwd(), "..", "..", ".env"),
+    path.resolve(process.cwd(), "..", "..", "..", ".env"),
+  ];
+  for (const p of pathsToCheck) {
+    if (fs.existsSync(p)) {
+      envPath = p;
+      break;
+    }
+  }
+}
+
+dotenv.config({ path: envPath });
 
 export const config = {
   db: {
