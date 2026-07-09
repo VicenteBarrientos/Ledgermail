@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "../../packages/database/src/generated/client/libquery_engine-*.so.node"
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" }
   ]
