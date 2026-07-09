@@ -1,0 +1,10 @@
+{
+  "bank": "Banco de Chile",
+  "amount": 150000,
+  "currency": "CLP",
+  "senderName": "JUAN PEREZ GONZALEZ",
+  "senderAccount": "1234567890",
+  "receiverAccount": "9876543210",
+  "reference": "987654321",
+  "description": "Pago de arriendo julio"
+}

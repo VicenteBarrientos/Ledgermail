@@ -1,0 +1,13 @@
+{
+  "name": "@ledgermail/gmail",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "googleapis": "^122.0.0",
+    "pdf-parse": "^1.1.1",
+    "@ledgermail/shared": "*",
+    "@ledgermail/database": "*"
+  }
+}

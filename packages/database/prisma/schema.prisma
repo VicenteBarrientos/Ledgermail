@@ -1,0 +1,107 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String          @id @default(cuid())
+  email     String          @unique
+  mailboxes MailboxSource[]
+  createdAt DateTime        @default(now())
+}
+
+enum SourceType {
+  GMAIL_OAUTH
+  OUTLOOK_OAUTH
+  IMAP
+}
+
+model MailboxSource {
+  id           String     @id @default(cuid())
+  userId       String
+  name         String     // e.g. "Work Gmail", "Personal Outlook"
+  type         SourceType
+  emailAddress String
+  credentials  Json       // Encrypted OAuth tokens or IMAP connection settings
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emails       Email[]
+}
+
+enum EmailStatus {
+  PENDING
+  PARSED
+  NEEDS_REVIEW
+  FAILED
+}
+
+model Email {
+  id               String         @id @default(cuid())
+  mailboxSourceId  String
+  messageId        String?        @unique // Foreign mail message ID (e.g. Gmail ID)
+  subject          String
+  receivedAt       DateTime
+  cleanedHtml      String         @db.Text
+  hash             String         @unique // SHA256(cleanedHtml) for cache deduplication
+  status           EmailStatus    @default(PENDING)
+  errorMessage     String?        @db.Text
+  hasAttachments   Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  
+  mailboxSource    MailboxSource  @relation(fields: [mailboxSourceId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  attempts         ParseAttempt[]
+}
+
+model Transaction {
+  id               String   @id @default(cuid())
+  emailId          String
+  bank             String   // e.g., "Banco de Chile"
+  amount           Float
+  currency         String   // e.g., "CLP"
+  senderName       String?
+  senderAccount    String?
+  receiverAccount  String?
+  reference        String?
+  description      String?
+  confidence       Float    // Programmatically calculated score between 0.0 and 1.0
+  createdAt        DateTime @default(now())
+
+  email            Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+}
+
+model ParseAttempt {
+  id                String   @id @default(cuid())
+  emailId           String
+  llmProvider       String   // "openai" | "gemini" | "anthropic"
+  modelName         String   // e.g., "gpt-4o-mini"
+  promptVersion     String   // e.g., "banco-chile/v1"
+  prompt            String   @db.Text
+  rawResponse       String   @db.Text
+  success           Boolean
+  
+  // Auditing & Cost Metrics
+  promptTokens      Int      @default(0)
+  completionTokens  Int      @default(0)
+  costInUSD         Float    @default(0.0)
+  latencyInMs       Int      @default(0)
+  
+  // Field-level verification markers (used for benchmark metrics)
+  amountValid       Boolean  @default(false)
+  dateValid         Boolean  @default(false)
+  senderNameValid   Boolean  @default(false)
+  senderAccountValid Boolean @default(false)
+  receiverAccountValid Boolean @default(false)
+  referenceValid    Boolean  @default(false)
+  
+  validationErrors  String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  email             Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+}

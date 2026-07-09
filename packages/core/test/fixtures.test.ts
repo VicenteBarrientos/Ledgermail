@@ -1,0 +1,93 @@
+import fs from "fs";
+import path from "path";
+import { describe, it, expect, vi } from "vitest";
+import { parseEmailPipeline } from "../src/parser";
+
+// Mock database and LLM calls since we don't have active keys / real DB in unit test context
+vi.mock("@ledgermail/database", () => {
+  return {
+    EmailStatus: {
+      PENDING: "PENDING",
+      PARSED: "PARSED",
+      NEEDS_REVIEW: "NEEDS_REVIEW",
+      FAILED: "FAILED"
+    },
+    db: {
+      email: {
+        upsert: vi.fn().mockImplementation((args) => Promise.resolve({ id: "mock-email-id", ...args.create })),
+        findUnique: vi.fn().mockResolvedValue(null),
+        update: vi.fn().mockResolvedValue({})
+      },
+      transaction: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "mock-txn-id", ...args.data }))
+      },
+      parseAttempt: {
+        create: vi.fn().mockResolvedValue({})
+      }
+    }
+  };
+});
+
+vi.mock("@ledgermail/llm", () => {
+  return {
+    getLLMProvider: vi.fn().mockReturnValue({
+      name: "mock-openai",
+      parse: vi.fn().mockResolvedValue({
+        rawText: JSON.stringify({
+          transactionType: "transfer_received",
+          amount: 150000,
+          currency: "CLP",
+          senderName: "JUAN PEREZ GONZALEZ",
+          senderAccount: "12-345-6789-0",
+          receiverAccount: "98-765-4321-0",
+          reference: "987654321",
+          description: "Pago de arriendo julio"
+        }),
+        parsedJson: {
+          transactionType: "transfer_received",
+          amount: 150000,
+          currency: "CLP",
+          senderName: "JUAN PEREZ GONZALEZ",
+          senderAccount: "12-345-6789-0",
+          receiverAccount: "98-765-4321-0",
+          reference: "987654321",
+          description: "Pago de arriendo julio"
+        },
+        usage: { promptTokens: 100, completionTokens: 50 }
+      })
+    })
+  };
+});
+
+describe("Banco de Chile Fixture Tests", () => {
+  it("should parse HTML fixtures and match expected JSON specifications", async () => {
+    const bankDir = path.resolve(__dirname, "../../../fixtures/banco-chile");
+    const files = fs.readdirSync(bankDir);
+    const htmlFiles = files.filter(f => f.endsWith(".html"));
+
+    for (const htmlFile of htmlFiles) {
+      const rawHtml = fs.readFileSync(path.join(bankDir, htmlFile), "utf-8");
+      const expectedJsonPath = path.join(bankDir, htmlFile.replace(".html", ".expected.json"));
+      const expectedJson = JSON.parse(fs.readFileSync(expectedJsonPath, "utf-8"));
+
+      const result = await parseEmailPipeline({
+        mailboxSourceId: "mock-mailbox-source",
+        from: "bancochile-informa@bancochile.cl",
+        subject: "Aviso de Transferencia Recibida",
+        bodyHtml: rawHtml
+      }, true); // force reparse
+
+      expect(result.success).toBe(true);
+      const txn = result.transactions[0];
+      
+      expect(txn.amount).toBe(expectedJson.amount);
+      expect(txn.currency).toBe(expectedJson.currency);
+      expect(txn.senderName).toBe(expectedJson.senderName);
+      expect(txn.senderAccount).toBe(expectedJson.senderAccount);
+      expect(txn.receiverAccount).toBe(expectedJson.receiverAccount);
+      expect(txn.reference).toBe(expectedJson.reference);
+      expect(txn.description).toBe(expectedJson.description);
+    }
+  });
+});
