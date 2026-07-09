@@ -33,28 +33,85 @@ vi.mock("@ledgermail/llm", () => {
   return {
     getLLMProvider: vi.fn().mockReturnValue({
       name: "mock-openai",
-      parse: vi.fn().mockResolvedValue({
-        rawText: JSON.stringify({
-          transactionType: "transfer_received",
-          amount: 150000,
-          currency: "CLP",
-          senderName: "JUAN PEREZ GONZALEZ",
-          senderAccount: "12-345-6789-0",
-          receiverAccount: "98-765-4321-0",
-          reference: "987654321",
-          description: "Pago de arriendo julio"
-        }),
-        parsedJson: {
-          transactionType: "transfer_received",
-          amount: 150000,
-          currency: "CLP",
-          senderName: "JUAN PEREZ GONZALEZ",
-          senderAccount: "12-345-6789-0",
-          receiverAccount: "98-765-4321-0",
-          reference: "987654321",
-          description: "Pago de arriendo julio"
-        },
-        usage: { promptTokens: 100, completionTokens: 50 }
+      parse: vi.fn().mockImplementation((req) => {
+        const text = req.userPrompt.toLowerCase();
+        
+        if (text.includes("carlos mena soto")) {
+          // incoming_transfer_01
+          return Promise.resolve({
+            rawText: JSON.stringify({
+              amount: 100000,
+              currency: "CLP",
+              senderName: "CARLOS MENA SOTO",
+              senderAccount: null,
+              receiverBank: "Banco Chile/Edwards",
+              receiverAccount: "0711122233044",
+              reference: "TEFMBCO2006201005305088888888",
+              description: null
+            }),
+            parsedJson: {
+              amount: 100000,
+              currency: "CLP",
+              senderName: "CARLOS MENA SOTO",
+              senderAccount: null,
+              receiverBank: "Banco Chile/Edwards",
+              receiverAccount: "0711122233044",
+              reference: "TEFMBCO2006201005305088888888",
+              description: null
+            },
+            usage: { promptTokens: 100, completionTokens: 50 }
+          });
+        } else if (text.includes("pedro soto muñoz")) {
+          // outbound_transfer_01
+          return Promise.resolve({
+            rawText: JSON.stringify({
+              amount: 100000,
+              currency: "CLP",
+              senderName: "PEDRO SOTO MUÑOZ",
+              senderAccount: null,
+              receiverBank: "Banco Estado",
+              receiverAccount: "0000111223004",
+              reference: "TEFMBCO2506251721305199999999",
+              description: null
+            }),
+            parsedJson: {
+              amount: 100000,
+              currency: "CLP",
+              senderName: "PEDRO SOTO MUÑOZ",
+              senderAccount: null,
+              receiverBank: "Banco Estado",
+              receiverAccount: "0000111223004",
+              reference: "TEFMBCO2506251721305199999999",
+              description: null
+            },
+            usage: { promptTokens: 100, completionTokens: 50 }
+          });
+        } else {
+          // transfer_01
+          return Promise.resolve({
+            rawText: JSON.stringify({
+              amount: 150000,
+              currency: "CLP",
+              senderName: "JUAN PEREZ GONZALEZ",
+              senderAccount: "12-345-6789-0",
+              receiverBank: "Banco de Chile",
+              receiverAccount: "98-765-4321-0",
+              reference: "987654321",
+              description: "Pago de arriendo julio"
+            }),
+            parsedJson: {
+              amount: 150000,
+              currency: "CLP",
+              senderName: "JUAN PEREZ GONZALEZ",
+              senderAccount: "12-345-6789-0",
+              receiverBank: "Banco de Chile",
+              receiverAccount: "98-765-4321-0",
+              reference: "987654321",
+              description: "Pago de arriendo julio"
+            },
+            usage: { promptTokens: 100, completionTokens: 50 }
+          });
+        }
       })
     })
   };
@@ -74,7 +131,7 @@ describe("Banco de Chile Fixture Tests", () => {
       const result = await parseEmailPipeline({
         mailboxSourceId: "mock-mailbox-source",
         from: "bancochile-informa@bancochile.cl",
-        subject: "Aviso de Transferencia Recibida",
+        subject: "Aviso de transferencia de fondos",
         bodyHtml: rawHtml
       }, true); // force reparse
 
@@ -88,6 +145,7 @@ describe("Banco de Chile Fixture Tests", () => {
       expect(txn.receiverAccount).toBe(expectedJson.receiverAccount);
       expect(txn.reference).toBe(expectedJson.reference);
       expect(txn.description).toBe(expectedJson.description);
+      expect(txn.transactionType).toBe(expectedJson.transactionType);
     }
   });
 });

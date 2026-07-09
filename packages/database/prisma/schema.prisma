@@ -63,6 +63,7 @@ model Transaction {
   id               String   @id @default(cuid())
   emailId          String
   bank             String   // e.g., "Banco de Chile"
+  transactionType  String   // "transfer_received" or "transfer_sent"
   amount           Float
   currency         String   // e.g., "CLP"
   senderName       String?

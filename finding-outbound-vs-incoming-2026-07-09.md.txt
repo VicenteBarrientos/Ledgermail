@@ -1,0 +1,31 @@
+﻿Finding: incoming vs. outbound transfers use the identical Banco de Chile email template — one field distinguishes them
+Date: 2026-07-09 Source: Two real emails from Vicente's uc.cl inbox, both from serviciodetransferencias@bancochile.cl, both subject "Aviso de transferencia de fondos"
+What we found
+We now have one real example of each case:
+
+
+* outbound_transfer_01 — the account holder sent money out to an external bank (Banco: Banco Estado).
+* incoming_transfer_01 — someone else sent money in, landing in a Banco de Chile account (Banco: Banco Chile/Edwards).
+
+
+Both emails use the exact same template and opening line: "nuestro(a) cliente [SENDER] ha efectuado una transferencia de fondos a tu cuenta con el siguiente detalle." Subject, sender address, and structure are identical. There is no separate template for "you received money" vs. "you sent money" — Banco de Chile sends the same comprobante to whichever party is the destinatario, regardless of which bank that destination account is at.
+The actual routing signal
+It's the Banco field under "Datos de destinatario." If it resolves to Banco de Chile, the money landed in a Banco de Chile account and this is a relevant incoming transaction. If it resolves to a different institution, the money left Banco de Chile and this transaction is not relevant to CondoSync-style reconciliation (at least not until LedgerMail supports other banks as destinations).
+
+
+Caveat already visible in just two samples: the raw string isn't a consistent "Banco de Chile" — one instance rendered as Banco Chile/Edwards (a legacy merger brand still used in some contexts). The normalizer needs an alias list for this field, not an exact string match. Two data points isn't enough to know the full set of variants; treat this as a known gap, not a solved problem.
+Suggested next step for the pipeline
+Add a deterministic classification step (before or alongside LLM extraction, per the project's AI Philosophy — this is business logic, not something to hand to the LLM) that reads the destination-bank field and tags the transaction isIncomingTransfer: true/false. Keep both classes in the normalized output rather than silently dropping outbound cases — useful for auditability and for catching cases where the bank name doesn't match any known alias.
+
+
+Fixtures added as a matched pair for this exact test:
+
+
+* fixtures/banco-chile/outbound_transfer_01.{html,expected.json}
+* fixtures/banco-chile/incoming_transfer_01.{html,expected.json}
+
+
+Same sender, same template, opposite classification — good candidate for a routing-logic unit test, not just an LLM-extraction fixture.
+Still open
+* Only one real sample of each direction. Need more incoming examples to nail down the alias list for the Banco field and confirm the "Asunto" (motivo) field is reliably empty vs. sometimes populated (relevant for CondoSync matching against a specific condo unit/payment).
+* Both real samples came from Copilot's plain-text extraction of the email body, not raw HTML from the Gmail/Graph API. Fine for validating extraction logic; replace with raw-HTML captures before trusting these against the actual sanitizer step.

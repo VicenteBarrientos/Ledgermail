@@ -1,0 +1,11 @@
+{
+  "bank": "Banco de Chile",
+  "transactionType": "transfer_received",
+  "amount": 100000,
+  "currency": "CLP",
+  "senderName": "CARLOS MENA SOTO",
+  "senderAccount": null,
+  "receiverAccount": "0711122233044",
+  "reference": "TEFMBCO2006201005305088888888",
+  "description": null
+}

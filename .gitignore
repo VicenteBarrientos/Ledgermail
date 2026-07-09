@@ -40,3 +40,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Package compiled files
+packages/**/*.js
+packages/**/*.js.map
+packages/**/*.d.ts
+

@@ -1,5 +1,6 @@
 {
   "bank": "Banco de Chile",
+  "transactionType": "transfer_received",
   "amount": 150000,
   "currency": "CLP",
   "senderName": "JUAN PEREZ GONZALEZ",

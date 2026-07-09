@@ -13,21 +13,21 @@ import { calculateConfidence } from "./confidence";
 export const TransactionJsonSchema = {
   type: "object",
   properties: {
-    transactionType: { type: "string", description: "The type of transaction, e.g., transfer_received" },
     amount: { type: "number", description: "The amount transferred. Must be a clean number (no currency signs or thousands separators)" },
     currency: { type: "string", description: "Three-letter currency code (e.g. CLP, USD)" },
     senderName: { type: ["string", "null"], description: "Full name of the person or entity who sent the transfer" },
     senderAccount: { type: ["string", "null"], description: "Account number of the sender" },
+    receiverBank: { type: ["string", "null"], description: "The name of the destination bank of the receiver (e.g. Banco de Chile, Banco Estado, BCI, Santander)" },
     receiverAccount: { type: ["string", "null"], description: "Account number of the receiver" },
     reference: { type: ["string", "null"], description: "Transfer reference number or transaction ID" },
     description: { type: ["string", "null"], description: "Transfer description, reason or comment" }
   },
   required: [
-    "transactionType",
     "amount",
     "currency",
     "senderName",
     "senderAccount",
+    "receiverBank",
     "receiverAccount",
     "reference",
     "description"
@@ -186,6 +186,12 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
       // 6. Normalize
       const normalized = normalizeLLMOutput(parsedData);
       
+      // 6b. Classify transaction direction based on receiverBank
+      const rxBank = String(normalized.receiverBank || "").toLowerCase();
+      const chileBankAliases = ["banco de chile", "bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards"];
+      const isChileDestination = chileBankAliases.some(alias => rxBank.includes(alias));
+      normalized.transactionType = isChileDestination ? "transfer_received" : "transfer_sent";
+      
       // 7. Validate
       const validation = TransactionValidationSchema.safeParse({
         bank: provider.name,
@@ -226,6 +232,13 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
 
       if (parsedData) {
         const normalized = normalizeLLMOutput(parsedData);
+        
+        // Classify transaction direction based on receiverBank
+        const rxBank = String(normalized.receiverBank || "").toLowerCase();
+        const chileBankAliases = ["banco de chile", "bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards"];
+        const isChileDestination = chileBankAliases.some(alias => rxBank.includes(alias));
+        normalized.transactionType = isChileDestination ? "transfer_received" : "transfer_sent";
+
         const validation = TransactionValidationSchema.safeParse({
           bank: provider.name,
           ...normalized
@@ -304,6 +317,7 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
       data: {
         emailId: emailRecord.id,
         bank: provider.name,
+        transactionType: parsedData.transactionType,
         amount: parsedData.amount,
         currency: parsedData.currency,
         senderName: parsedData.senderName,
@@ -349,6 +363,7 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
         data: {
           emailId: emailRecord.id,
           bank: provider.name,
+          transactionType: parsedData.transactionType || "transfer_received",
           amount: parsedData.amount || 0,
           currency: parsedData.currency || "CLP",
           senderName: parsedData.senderName,

@@ -1,0 +1,11 @@
+{
+  "bank": "Banco de Chile",
+  "transactionType": "transfer_sent",
+  "amount": 100000,
+  "currency": "CLP",
+  "senderName": "PEDRO SOTO MUÑOZ",
+  "senderAccount": null,
+  "receiverAccount": "0000111223004",
+  "reference": "TEFMBCO2506251721305199999999",
+  "description": null
+}
