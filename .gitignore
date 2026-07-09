@@ -53,3 +53,5 @@ apps/**/*.jsx
 apps/**/*.jsx.map
 apps/**/*.d.ts
 
+
+.vercel
