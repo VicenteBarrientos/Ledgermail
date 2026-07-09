@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=api/index.js --external:@prisma/client"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -21,6 +21,7 @@
     "prisma": "^5.10.2"
   },
   "devDependencies": {
+    "esbuild": "^0.20.1",
     "typescript": "^5.3.3",
     "tsx": "^4.7.1",
     "@types/express": "^4.17.21",
