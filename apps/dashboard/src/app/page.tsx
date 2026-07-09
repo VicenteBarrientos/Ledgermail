@@ -105,6 +105,11 @@ export default function Dashboard() {
   const [replayProvider, setReplayProvider] = useState("openai");
   const [apiOnline, setApiOnline] = useState(false);
   const [mailboxSources, setMailboxSources] = useState<any[]>([]);
+  const [showTestParser, setShowTestParser] = useState(false);
+  const [testFrom, setTestFrom] = useState("bancochile-informa@bancochile.cl");
+  const [testSubject, setTestSubject] = useState("Aviso de transferencia de fondos");
+  const [testBodyHtml, setTestBodyHtml] = useState("");
+  const [isParsingTest, setIsParsingTest] = useState(false);
 
   // Stats calculation
   const totalProcessed = transactions.length;
@@ -186,6 +191,45 @@ export default function Dashboard() {
       }
     } catch (err: any) {
       alert(`Failed to connect to LedgerMail API: ${err.message}`);
+    }
+  };
+
+  const handleParseTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mailboxSources.length === 0) {
+      alert("Please connect a Mailbox Source first so we have an owner ID to log this test against!");
+      return;
+    }
+    if (!testBodyHtml) {
+      alert("Please paste some HTML or raw email body text first.");
+      return;
+    }
+
+    setIsParsingTest(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: testFrom,
+          subject: testSubject,
+          bodyHtml: testBodyHtml,
+          mailboxSourceId: mailboxSources[0].id
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Email parsed successfully! Check the payments list.");
+        setShowTestParser(false);
+        setTestBodyHtml("");
+        fetchPayments();
+      } else {
+        alert(`Parsing Failed: ${data.error || "Validation check error"}`);
+      }
+    } catch (err: any) {
+      alert(`Network error calling parser: ${err.message}`);
+    } finally {
+      setIsParsingTest(false);
     }
   };
 
@@ -305,6 +349,13 @@ export default function Dashboard() {
             {apiOnline ? "REST API Online" : "Sandbox Simulator"}
           </div>
           <button 
+            onClick={() => setShowTestParser(!showTestParser)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-sm font-semibold transition"
+          >
+            <FileText className="w-4 h-4" />
+            {showTestParser ? "Hide Test Parser" : "Test Email Parser"}
+          </button>
+          <button 
             onClick={handleSyncInbox}
             disabled={isSyncing}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-indigo-600/20"
@@ -314,6 +365,64 @@ export default function Dashboard() {
           </button>
         </div>
       </header>
+
+      {showTestParser && (
+        <section className="glass-card p-5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex flex-col gap-4 animate-fadeIn">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <FileText className="text-indigo-400 w-4 h-4" />
+            Manual Direct Parser Testing
+          </h3>
+          <form onSubmit={handleParseTestEmail} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Sender From Address</label>
+              <input 
+                type="text" 
+                value={testFrom} 
+                onChange={(e) => setTestFrom(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Email Subject</label>
+              <input 
+                type="text" 
+                value={testSubject} 
+                onChange={(e) => setTestSubject(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">Email Body (HTML or Raw Text)</label>
+              <textarea 
+                value={testBodyHtml} 
+                onChange={(e) => setTestBodyHtml(e.target.value)}
+                placeholder="Paste raw email notification markup here (e.g. Banco de Chile notification structure)..."
+                rows={6}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3 md:col-span-2 mt-2">
+              <button 
+                type="button"
+                onClick={() => setShowTestParser(false)}
+                className="px-4 py-2 border border-slate-700 hover:bg-slate-800 transition text-xs font-semibold rounded-lg text-slate-400"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit"
+                disabled={isParsingTest}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 transition text-xs font-semibold rounded-lg text-white disabled:opacity-50"
+              >
+                {isParsingTest ? "Parsing..." : "Parse Test Email"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {/* Metrics Bar */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
