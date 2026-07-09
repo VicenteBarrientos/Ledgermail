@@ -16,7 +16,9 @@
     "@ledgermail/database": "*",
     "@ledgermail/core": "*",
     "@ledgermail/gmail": "*",
-    "@ledgermail/providers": "*"
+    "@ledgermail/providers": "*",
+    "@prisma/client": "^5.10.2",
+    "prisma": "^5.10.2"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
