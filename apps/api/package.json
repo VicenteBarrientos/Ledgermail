@@ -19,6 +19,7 @@
     "@ledgermail/providers": "*"
   },
   "devDependencies": {
+    "typescript": "^5.3.3",
     "tsx": "^4.7.1",
     "@types/express": "^4.17.21",
     "@types/cors": "^2.8.17"
