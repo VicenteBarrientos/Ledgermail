@@ -15,7 +15,7 @@ export function calculateConfidence(
   }
 
   // 3. Valid Transaction Type (10%)
-  if (normalized.transactionType === "transfer_received") {
+  if (normalized.transactionType === "transfer_received" || normalized.transactionType === "transfer_sent") {
     score += 0.10;
   }
 
