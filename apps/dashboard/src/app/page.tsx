@@ -534,7 +534,7 @@ export default function Dashboard() {
     <div className="min-h-screen">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[#0a0c10]/92 backdrop-blur-xl">
-        <div className="max-w-[1480px] mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-[1480px] mx-auto px-5 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-[#eef2f7] text-[#0c1117] flex items-center justify-center shadow-sm shrink-0">
               <Mail className="w-4 h-4" strokeWidth={2.25} />
@@ -605,7 +605,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="max-w-[1480px] mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
+      <div className="max-w-[1480px] mx-auto px-5 sm:px-8 py-7 flex flex-col gap-6">
         {/* Toast */}
         {toast && (
           <div
@@ -636,7 +636,7 @@ export default function Dashboard() {
 
         {/* Test parser panel */}
         {showTestParser && (
-          <section className="glass-card p-5 rounded-lg border border-teal-400/24 bg-teal-400/[0.04] animate-slideDown">
+          <section className="glass-card p-6 rounded-lg border border-teal-400/24 bg-teal-400/[0.04] animate-slideDown">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -724,7 +724,7 @@ export default function Dashboard() {
         )}
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
               label: "Processed",
@@ -757,7 +757,7 @@ export default function Dashboard() {
           ].map((m) => (
             <div
               key={m.label}
-              className="glass-card glass-card-hover p-4 sm:p-5 rounded-lg"
+              className="glass-card glass-card-hover p-5 sm:p-6 rounded-lg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -780,8 +780,8 @@ export default function Dashboard() {
         </section>
 
         {/* Sources + benchmarks */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="glass-card p-5 rounded-lg flex flex-col gap-4">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="glass-card p-6 rounded-lg flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-teal-300" />
@@ -796,7 +796,7 @@ export default function Dashboard() {
 
             <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-0.5">
               {mailboxSources.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[#0d1016] px-4 py-8 text-center">
+                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[#0d1016] px-5 py-9 text-center">
                   <Link2 className="w-7 h-7 text-slate-600 mx-auto mb-2" />
                   <p className="text-xs text-slate-500">
                     No sources connected yet.
@@ -809,7 +809,7 @@ export default function Dashboard() {
                 mailboxSources.map((source) => (
                   <div
                     key={source.id}
-                    className="p-3.5 rounded-lg bg-[#0d1016] border border-[var(--border)] flex justify-between items-start gap-3"
+                    className="p-4 rounded-lg bg-[#0d1016] border border-[var(--border)] flex justify-between items-start gap-3"
                   >
                     <div className="min-w-0">
                       <h4 className="text-sm font-medium text-slate-100 truncate">
@@ -841,7 +841,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="glass-card p-5 rounded-lg lg:col-span-2 flex flex-col gap-4">
+          <div className="glass-card p-6 rounded-lg lg:col-span-2 flex flex-col gap-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-teal-300" />
@@ -854,11 +854,11 @@ export default function Dashboard() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {BENCHMARKS.map((b) => (
                 <div
                   key={b.label}
-                  className="p-3.5 rounded-lg bg-[#0d1016] border border-[var(--border)]"
+                  className="p-4 rounded-lg bg-[#0d1016] border border-[var(--border)]"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] text-slate-500 font-semibold uppercase">
@@ -885,10 +885,10 @@ export default function Dashboard() {
         </section>
 
         {/* Main split */}
-        <main className="grid grid-cols-1 xl:grid-cols-5 gap-4 min-h-[560px]">
+        <main className="grid grid-cols-1 xl:grid-cols-5 gap-5 min-h-[560px]">
           {/* List */}
           <section className="xl:col-span-2 glass-card rounded-lg flex flex-col overflow-hidden max-h-[720px]">
-            <div className="p-4 border-b border-[var(--border)] space-y-3">
+            <div className="p-5 border-b border-[var(--border)] space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                   <Inbox className="w-4 h-4 text-teal-300" />
@@ -925,13 +925,13 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {isLoading && transactions.length === 0 ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="skeleton h-[88px] w-full" />
                 ))
               ) : filteredTransactions.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center px-4">
+                <div className="flex-1 flex flex-col items-center justify-center py-14 text-center px-6">
                   <Search className="w-8 h-8 text-slate-700 mb-3" />
                   <p className="text-sm text-slate-400">No matching payments</p>
                   <p className="text-xs text-slate-600 mt-1">
@@ -1009,7 +1009,7 @@ export default function Dashboard() {
           <section className="xl:col-span-3 glass-card rounded-lg flex flex-col overflow-hidden min-h-[500px] max-h-[720px]">
             {selectedTxn ? (
               <>
-                <div className="p-5 border-b border-[var(--border)]">
+                <div className="p-6 border-b border-[var(--border)]">
                   <div className="flex flex-wrap justify-between items-start gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -1073,7 +1073,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="px-4 pt-3">
+                <div className="px-6 pt-4">
                   <div className="tab-list overflow-x-auto">
                     {(
                       [
@@ -1099,9 +1099,9 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 animate-fadeIn">
+                <div className="flex-1 overflow-y-auto p-6 animate-fadeIn">
                   {activeTab === "fields" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {fieldRows.map((f) => (
                         <div key={f.label} className="field-card">
                           <div className="field-label">{f.label}</div>
@@ -1177,7 +1177,7 @@ export default function Dashboard() {
                         selectedTxn.attempts.map((att: any, idx: number) => (
                           <div
                             key={att.id || idx}
-                            className="p-4 rounded-lg bg-[#0d1016] border border-[var(--border)] flex flex-col gap-3"
+                            className="p-5 rounded-lg bg-[#0d1016] border border-[var(--border)] flex flex-col gap-4"
                           >
                             <div className="flex flex-wrap justify-between items-center gap-2 border-b border-[var(--border)] pb-2.5">
                               <span className="text-xs font-bold text-white uppercase flex items-center gap-1.5">
@@ -1279,7 +1279,7 @@ export default function Dashboard() {
                   )}
 
                   {activeTab === "replay" && (
-                    <div className="flex flex-col gap-4 p-4 rounded-lg bg-[#0d1016] border border-[var(--border)]">
+                    <div className="flex flex-col gap-5 p-5 rounded-lg bg-[#0d1016] border border-[var(--border)]">
                       <div className="flex items-start gap-2.5 text-teal-300 text-xs">
                         <Info className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>

@@ -326,7 +326,7 @@ textarea.input-field {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: #10141b;
-  padding: 0.875rem;
+  padding: 1rem;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease,
     box-shadow 0.15s ease;
@@ -345,7 +345,7 @@ textarea.input-field {
 
 .field-card {
   min-width: 0;
-  padding: 0.78rem 0.875rem;
+  padding: 1rem;
   background: #0d1016;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -369,7 +369,7 @@ textarea.input-field {
 
 .code-block {
   overflow: auto;
-  padding: 1rem;
+  padding: 1.25rem;
   background: #080a0e;
   border: 1px solid var(--border);
   border-radius: var(--radius);
