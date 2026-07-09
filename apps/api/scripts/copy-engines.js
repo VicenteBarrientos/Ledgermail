@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const srcDir = path.resolve(__dirname, "../../../packages/database/src/generated/client");
-const destDir = path.resolve(__dirname, "../api");
+const destDir = path.resolve(__dirname, "..");
 
 if (!fs.existsSync(srcDir)) {
   console.log(`[copy-engines] Source directory ${srcDir} does not exist. Skipping.`);
