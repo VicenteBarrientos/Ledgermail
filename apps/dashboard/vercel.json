@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && npm run build --workspace @ledgermail/dashboard",
+  "installCommand": "npm --prefix ../.. install",
+  "buildCommand": "npm --prefix ../.. run build --workspace @ledgermail/dashboard",
   "outputDirectory": ".next"
 }
