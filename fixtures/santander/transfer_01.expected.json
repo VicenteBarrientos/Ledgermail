@@ -1,0 +1,11 @@
+{
+  "bank": "Santander",
+  "transactionType": "transfer_received",
+  "amount": 75500,
+  "currency": "CLP",
+  "senderName": "PEDRO ALDUNATE SILVA",
+  "senderAccount": null,
+  "receiverAccount": "0000889977011",
+  "reference": "77894523",
+  "description": null
+}

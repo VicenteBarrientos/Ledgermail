@@ -1,0 +1,11 @@
+{
+  "bank": "Scotiabank",
+  "transactionType": "transfer_received",
+  "amount": 98000,
+  "currency": "CLP",
+  "senderName": "CLAUDIA TAPIA SOTO",
+  "senderAccount": null,
+  "receiverAccount": "3344552211",
+  "reference": "88729302",
+  "description": null
+}

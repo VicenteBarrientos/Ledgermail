@@ -14,7 +14,7 @@ describe("Bank Provider Detection", () => {
     expect(provider?.name).toBe("Banco de Chile");
   });
 
-  it("should not match Santander for the MVP", () => {
+  it("should detect Santander now that it is active", () => {
     const email = {
       from: "personas@santander.cl",
       subject: "Aviso de Transferencia",
@@ -22,6 +22,7 @@ describe("Bank Provider Detection", () => {
       headers: {}
     };
     const provider = detectProvider(email);
-    expect(provider).toBeNull();
+    expect(provider).not.toBeNull();
+    expect(provider?.name).toBe("Santander");
   });
 });

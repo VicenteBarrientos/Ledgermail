@@ -1,0 +1,11 @@
+{
+  "bank": "Itaú",
+  "transactionType": "transfer_received",
+  "amount": 310000,
+  "currency": "CLP",
+  "senderName": "ROBERTO VALENZUELA SOTO",
+  "senderAccount": null,
+  "receiverAccount": "887766554",
+  "reference": "22940592",
+  "description": null
+}

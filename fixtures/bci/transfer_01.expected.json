@@ -1,0 +1,11 @@
+{
+  "bank": "BCI",
+  "transactionType": "transfer_received",
+  "amount": 185000,
+  "currency": "CLP",
+  "senderName": "ALBERTO MUÑOZ ROJAS",
+  "senderAccount": null,
+  "receiverAccount": "77665544",
+  "reference": "33492049",
+  "description": null
+}

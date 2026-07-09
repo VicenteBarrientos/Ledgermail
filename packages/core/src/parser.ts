@@ -40,7 +40,10 @@ export function computeSHA256(text: string): string {
 }
 
 export function loadPrompt(bankName: string, version: string): string {
-  const slug = bankName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  let slug = bankName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  if (slug === "banco-de-chile") slug = "banco-chile";
+  if (slug === "bancoestado") slug = "banco-estado";
+  if (slug === "ita-") slug = "itau";
   const possiblePaths = [
     path.join(__dirname, "..", "prompts", slug, `${version}.md`),
     path.join(__dirname, "prompts", slug, `${version}.md`),
@@ -186,11 +189,19 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
       // 6. Normalize
       const normalized = normalizeLLMOutput(parsedData);
       
-      // 6b. Classify transaction direction based on receiverBank
+      // 6b. Classify transaction direction based on receiverBank matching provider bank
       const rxBank = String(normalized.receiverBank || "").toLowerCase();
-      const chileBankAliases = ["banco de chile", "bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards"];
-      const isChileDestination = chileBankAliases.some(alias => rxBank.includes(alias));
-      normalized.transactionType = isChileDestination ? "transfer_received" : "transfer_sent";
+      const providerNameLower = provider.name.toLowerCase();
+      const providerAliases = [providerNameLower];
+      if (providerNameLower === "banco de chile") {
+        providerAliases.push("bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards");
+      } else if (providerNameLower === "bancoestado") {
+        providerAliases.push("banco estado", "estado");
+      } else if (providerNameLower === "itaú" || providerNameLower === "itau") {
+        providerAliases.push("itaú", "itau", "banco itau");
+      }
+      const isOwnerDestination = providerAliases.some(alias => rxBank.includes(alias)) || rxBank.includes(providerNameLower);
+      normalized.transactionType = isOwnerDestination ? "transfer_received" : "transfer_sent";
       
       // 7. Validate
       const validation = TransactionValidationSchema.safeParse({
@@ -234,10 +245,19 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
         const normalized = normalizeLLMOutput(parsedData);
         
         // Classify transaction direction based on receiverBank
+        // Classify transaction direction based on receiverBank matching provider bank
         const rxBank = String(normalized.receiverBank || "").toLowerCase();
-        const chileBankAliases = ["banco de chile", "bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards"];
-        const isChileDestination = chileBankAliases.some(alias => rxBank.includes(alias));
-        normalized.transactionType = isChileDestination ? "transfer_received" : "transfer_sent";
+        const providerNameLower = provider.name.toLowerCase();
+        const providerAliases = [providerNameLower];
+        if (providerNameLower === "banco de chile") {
+          providerAliases.push("bancochile", "chile", "edwards", "banco edwards", "banco chile/edwards");
+        } else if (providerNameLower === "bancoestado") {
+          providerAliases.push("banco estado", "estado");
+        } else if (providerNameLower === "itaú" || providerNameLower === "itau") {
+          providerAliases.push("itaú", "itau", "banco itau");
+        }
+        const isOwnerDestination = providerAliases.some(alias => rxBank.includes(alias)) || rxBank.includes(providerNameLower);
+        normalized.transactionType = isOwnerDestination ? "transfer_received" : "transfer_sent";
 
         const validation = TransactionValidationSchema.safeParse({
           bank: provider.name,

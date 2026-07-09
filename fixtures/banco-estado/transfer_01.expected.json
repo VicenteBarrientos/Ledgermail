@@ -1,0 +1,11 @@
+{
+  "bank": "BancoEstado",
+  "transactionType": "transfer_received",
+  "amount": 230000,
+  "currency": "CLP",
+  "senderName": "GABRIELA PAZ LOPEZ",
+  "senderAccount": null,
+  "receiverAccount": "990011223",
+  "reference": "10459203",
+  "description": null
+}
