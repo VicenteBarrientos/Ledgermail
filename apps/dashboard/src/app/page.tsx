@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [replayModel, setReplayModel] = useState("gpt-4o-mini");
   const [replayProvider, setReplayProvider] = useState("openai");
   const [apiOnline, setApiOnline] = useState(false);
+  const [mailboxSources, setMailboxSources] = useState<any[]>([]);
 
   // Stats calculation
   const totalProcessed = transactions.length;
@@ -116,7 +117,77 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchPayments();
+    fetchMailboxes();
   }, []);
+
+  useEffect(() => {
+    // Check if redirect query param ?code=xxxx is present
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get("code");
+      if (code) {
+        connectGmail(code);
+      }
+    }
+  }, []);
+
+  const fetchMailboxes = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/mailboxes");
+      if (res.ok) {
+        const data = await res.json();
+        setMailboxSources(data);
+      }
+    } catch (err) {
+      console.error("Failed to load mailboxes:", err);
+    }
+  };
+
+  const connectGmail = async (code: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/gmail/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          userId: "default-user",
+          name: "Gmail Inbox",
+          emailAddress: "comunidad@ledgermail.com"
+        })
+      });
+      if (res.ok) {
+        alert("Gmail Account connected successfully!");
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
+        fetchMailboxes();
+        fetchPayments();
+      } else {
+        const error = await res.json();
+        alert(`Failed to connect Gmail: ${error.error}`);
+      }
+    } catch (err: any) {
+      alert(`Error connecting Gmail: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegisterSource = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/gmail/auth-url");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        alert("Failed to get Google authorization URL.");
+      }
+    } catch (err: any) {
+      alert(`Failed to connect to LedgerMail API: ${err.message}`);
+    }
+  };
 
   const fetchPayments = async () => {
     setIsLoading(true);
@@ -142,12 +213,18 @@ export default function Dashboard() {
   };
 
   const handleSyncInbox = async () => {
+    if (mailboxSources.length === 0) {
+      alert("No active Mailbox Sources registered. Please connect Gmail first!");
+      return;
+    }
+    
+    const mailboxId = mailboxSources[0].id;
     setIsSyncing(true);
     try {
       const res = await fetch("http://localhost:3001/api/gmail/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mailboxSourceId: "mock-mailbox-id" }) // replace with real mailbox ID in production
+        body: JSON.stringify({ mailboxSourceId: mailboxId, maxResults: 10 })
       });
       if (res.ok) {
         const result = await res.json();
@@ -289,19 +366,28 @@ export default function Dashboard() {
             <Database className="w-4 h-4 text-indigo-400" />
             <h2 className="text-sm font-semibold text-white">Mailbox Sources</h2>
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="p-3.5 rounded-lg bg-slate-900/60 border border-[rgba(255,255,255,0.04)] flex justify-between items-start">
-              <div>
-                <h4 className="text-sm font-medium text-slate-200">Comunidad Gmail</h4>
-                <p className="text-xs text-slate-400 mt-0.5">comunidad@bancochile-net.cl</p>
-                <div className="flex gap-2 mt-2">
-                  <span className="px-2 py-0.5 rounded bg-green-500/10 text-[10px] text-green-400 border border-green-500/20 font-medium">Active</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 font-medium">Gmail OAuth</span>
+          <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto">
+            {mailboxSources.length === 0 ? (
+              <p className="text-xs text-slate-500 italic text-center py-4">No sources connected yet. Click below to add.</p>
+            ) : (
+              mailboxSources.map((source) => (
+                <div key={source.id} className="p-3.5 rounded-lg bg-slate-900/60 border border-[rgba(255,255,255,0.04)] flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-200">{source.name}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">{source.emailAddress}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="px-2 py-0.5 rounded bg-green-500/10 text-[10px] text-green-400 border border-green-500/20 font-medium">Active</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 font-medium">{source.type === "GMAIL_OAUTH" ? "Gmail OAuth" : source.type}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              ))
+            )}
           </div>
-          <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 transition text-xs font-semibold rounded-lg text-slate-200 border border-slate-700">
+          <button 
+            onClick={handleRegisterSource}
+            className="w-full py-2 bg-slate-800 hover:bg-slate-700 transition text-xs font-semibold rounded-lg text-slate-200 border border-slate-700"
+          >
             + Register New Source
           </button>
         </div>

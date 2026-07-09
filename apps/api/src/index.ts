@@ -115,6 +115,19 @@ app.get("/api/payments/:id", async (req, res) => {
   }
 });
 
+// 2.5. GET /api/mailboxes - List registered mailbox sources
+app.get("/api/mailboxes", async (req, res) => {
+  try {
+    const mailboxes = await db.mailboxSource.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(mailboxes);
+  } catch (error: any) {
+    logger.error("API error fetching mailboxes:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 3. POST /api/gmail/connect - Initiates Gmail OAuth or accepts authorization code
 app.get("/api/gmail/auth-url", (req, res) => {
   try {

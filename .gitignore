@@ -46,3 +46,10 @@ packages/**/*.js
 packages/**/*.js.map
 packages/**/*.d.ts
 
+# App compiled files
+apps/**/*.js
+apps/**/*.js.map
+apps/**/*.jsx
+apps/**/*.jsx.map
+apps/**/*.d.ts
+
