@@ -534,7 +534,7 @@ export default function Dashboard() {
     <div className="min-h-screen">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[#0a0c10]/92 backdrop-blur-xl">
-        <div className="max-w-[1480px] mx-auto px-5 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-[1280px] mx-auto px-6 sm:px-10 lg:px-12 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-[#eef2f7] text-[#0c1117] flex items-center justify-center shadow-sm shrink-0">
               <Mail className="w-4 h-4" strokeWidth={2.25} />
@@ -605,7 +605,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="max-w-[1480px] mx-auto px-5 sm:px-8 py-7 flex flex-col gap-6">
+      <div className="max-w-[1280px] mx-auto px-6 sm:px-10 lg:px-12 py-7 flex flex-col gap-6">
         {/* Toast */}
         {toast && (
           <div
