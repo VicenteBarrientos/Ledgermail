@@ -138,7 +138,7 @@ export default function Dashboard() {
 
   const fetchMailboxes = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/mailboxes");
+      const res = await fetch("http://localhost:3002/api/mailboxes");
       if (res.ok) {
         const data = await res.json();
         setMailboxSources(data);
@@ -151,7 +151,7 @@ export default function Dashboard() {
   const connectGmail = async (code: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/gmail/connect", {
+      const res = await fetch("http://localhost:3002/api/gmail/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -180,7 +180,7 @@ export default function Dashboard() {
 
   const handleRegisterSource = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/gmail/auth-url");
+      const res = await fetch("http://localhost:3002/api/gmail/auth-url");
       if (res.ok) {
         const data = await res.json();
         if (data.url) {
@@ -207,7 +207,7 @@ export default function Dashboard() {
 
     setIsParsingTest(true);
     try {
-      const res = await fetch("http://localhost:3001/api/parse", {
+      const res = await fetch("http://localhost:3002/api/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -236,7 +236,7 @@ export default function Dashboard() {
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/payments");
+      const res = await fetch("http://localhost:3002/api/payments");
       if (res.ok) {
         const payload = await res.json();
         if (payload.data && payload.data.length > 0) {
@@ -265,7 +265,7 @@ export default function Dashboard() {
     const mailboxId = mailboxSources[0].id;
     setIsSyncing(true);
     try {
-      const res = await fetch("http://localhost:3001/api/gmail/sync", {
+      const res = await fetch("http://localhost:3002/api/gmail/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mailboxSourceId: mailboxId, maxResults: 10 })
@@ -288,7 +288,7 @@ export default function Dashboard() {
     if (!selectedTxn) return;
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/reparse", {
+      const res = await fetch("http://localhost:3002/api/reparse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
