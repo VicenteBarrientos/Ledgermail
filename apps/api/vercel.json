@@ -1,4 +1,5 @@
 {
+  "buildCommand": "echo 'No build step required for serverless API'",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.ts" }
   ]
