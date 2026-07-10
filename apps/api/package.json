@@ -18,7 +18,8 @@
     "@ledgermail/gmail": "*",
     "@ledgermail/providers": "*",
     "@prisma/client": "^5.10.2",
-    "prisma": "^5.10.2"
+    "prisma": "^5.10.2",
+    "@anthropic-ai/sdk": "^0.18.0"
   },
   "devDependencies": {
     "esbuild": "^0.20.1",

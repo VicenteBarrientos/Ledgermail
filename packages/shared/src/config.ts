@@ -40,6 +40,8 @@ export const config = {
   api: {
     port: parseInt(process.env.PORT || "3001", 10),
     cronSecret: process.env.CRON_SECRET || "local-cron-secret",
+    condosyncWebhookUrl: process.env.CONDOSYNC_WEBHOOK_URL || "",
+    apiBaseUrl: process.env.API_BASE_URL || "",
   },
   flags: {
     enableAggressiveSanitizer: process.env.ENABLE_AGGRESSIVE_SANITIZER !== "false",

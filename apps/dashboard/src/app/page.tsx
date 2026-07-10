@@ -27,7 +27,7 @@ import {
   Activity,
   ChevronRight,
 } from "lucide-react";
-
+import { ChatWidget } from "../components/chatbot/chat-widget";
 // Datos de muestra cuando la API no esta disponible.
 const MOCK_TRANSACTIONS = [
   {
@@ -1380,6 +1380,7 @@ export default function Dashboard() {
           LedgerMail · Lectura inteligente de notificaciones bancarias · MVP
           v1
         </footer>
+        <ChatWidget />
       </div>
     </div>
   );

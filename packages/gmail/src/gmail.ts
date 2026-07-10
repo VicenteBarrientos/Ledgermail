@@ -112,6 +112,7 @@ export interface FetchedEmail {
   receivedAt: Date;
   bodyHtml: string;
   hasAttachments: boolean;
+  rawMime?: string;
 }
 
 export async function syncGmailMessages(
@@ -209,13 +210,29 @@ export async function syncGmailMessages(
         }
       }
 
+      // Fetch raw MIME message for EML preservation
+      let rawMime: string | undefined;
+      try {
+        const rawRes = await gmail.users.messages.get({
+          userId: "me",
+          id: msg.id,
+          format: "raw"
+        });
+        if (rawRes.data?.raw) {
+          rawMime = Buffer.from(rawRes.data.raw, "base64url").toString("utf-8");
+        }
+      } catch (rawErr) {
+        logger.error(`Failed to fetch raw MIME for message ${msg.id}:`, rawErr);
+      }
+
       fetchedEmails.push({
         messageId: msg.id,
         subject,
         from,
         receivedAt,
         bodyHtml,
-        hasAttachments
+        hasAttachments,
+        rawMime
       });
     } catch (err) {
       logger.error(`Failed to process message details for ID ${msg.id}:`, err);

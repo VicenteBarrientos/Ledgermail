@@ -53,6 +53,7 @@ model Email {
   status           EmailStatus    @default(PENDING)
   errorMessage     String?        @db.Text
   hasAttachments   Boolean        @default(false)
+  emlPath          String?        @db.Text
   createdAt        DateTime       @default(now())
   
   mailboxSource    MailboxSource  @relation(fields: [mailboxSourceId], references: [id], onDelete: Cascade)

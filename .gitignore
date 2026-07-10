@@ -55,3 +55,12 @@ apps/**/*.d.ts
 
 
 .vercel
+
+# Binary engines
+*.node
+*.dll.node
+query_engine-*
+
+# Local email/evidence storage
+storage/
+**/storage/

@@ -9,6 +9,7 @@ import { detectProvider } from "@ledgermail/providers";
 import { sanitizeHtmlForLLM } from "./sanitizer";
 import { normalizeLLMOutput } from "./normalizer";
 import { calculateConfidence } from "./confidence";
+import { dispatchTransactionWebhook } from "./webhook";
 
 export const TransactionJsonSchema = {
   type: "object",
@@ -78,6 +79,7 @@ export interface ParseInput {
   bodyHtml: string;
   headers?: Record<string, string>;
   hasAttachments?: boolean;
+  rawMime?: string;
 }
 
 export async function parseEmailPipeline(input: ParseInput, forceReparse = false): Promise<any> {
@@ -150,6 +152,42 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
       hasAttachments
     }
   });
+
+  // Save EML file if not already saved
+  if (!emailRecord.emlPath) {
+    try {
+      const storageDir = path.join(process.cwd(), "storage", "emails");
+      if (!fs.existsSync(storageDir)) {
+        fs.mkdirSync(storageDir, { recursive: true });
+      }
+      const emlFilePath = path.join(storageDir, `${emailRecord.id}.eml`);
+      
+      let emlContent = input.rawMime;
+      if (!emlContent) {
+        // Fallback for manually parsed emails (API)
+        emlContent = [
+          `From: ${input.from}`,
+          `Subject: ${input.subject}`,
+          `Date: ${emailRecord.receivedAt.toUTCString()}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: text/html; charset=utf-8`,
+          ``,
+          input.bodyHtml
+        ].join("\n");
+      }
+
+      fs.writeFileSync(emlFilePath, emlContent, "utf-8");
+      
+      // Update emailRecord in database and in memory
+      const updatedEmail = await db.email.update({
+        where: { id: emailRecord.id },
+        data: { emlPath: emlFilePath }
+      });
+      emailRecord.emlPath = updatedEmail.emlPath;
+    } catch (err) {
+      logger.error(`Failed to save EML file for email ID ${emailRecord.id}:`, err);
+    }
+  }
 
   // 4. Setup Prompt
   const promptVersion = `${provider.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/v1`;
@@ -288,17 +326,17 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
   const costInUSD = (promptTokens * 0.00000015) + (completionTokens * 0.0000006);
 
   // Field validation flags for benchmarks
-  const amountValid = success || (parsedData && typeof parsedData.amount === "number" && parsedData.amount > 0);
-  const dateValid = success || !!parsedData; // email date itself is valid
-  const senderNameValid = success || (parsedData && parsedData.senderName && parsedData.senderName.length > 2);
-  const senderAccountValid = success || (parsedData && parsedData.senderAccount && parsedData.senderAccount.length > 3);
-  const receiverAccountValid = success || (parsedData && parsedData.receiverAccount && parsedData.receiverAccount.length > 3);
-  const referenceValid = success || (parsedData && parsedData.reference && parsedData.reference.length > 2);
+  const amountValid = Boolean(success || (parsedData && typeof parsedData.amount === "number" && parsedData.amount > 0));
+  const dateValid = Boolean(success || !!parsedData); // email date itself is valid
+  const senderNameValid = Boolean(success || (parsedData && parsedData.senderName && parsedData.senderName.length > 2));
+  const senderAccountValid = Boolean(success || (parsedData && parsedData.senderAccount && parsedData.senderAccount.length > 3));
+  const receiverAccountValid = Boolean(success || (parsedData && parsedData.receiverAccount && parsedData.receiverAccount.length > 3));
+  const referenceValid = Boolean(success || (parsedData && parsedData.reference && parsedData.reference.length > 2));
 
   // 9. Save parsing attempt log
   await db.parseAttempt.create({
     data: {
-      emailId: emailRecord.id,
+      email: { connect: { id: emailRecord.id } },
       llmProvider: llmProviderName,
       modelName: llmModelName,
       promptVersion,
@@ -335,7 +373,7 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
 
     const txn = await db.transaction.create({
       data: {
-        emailId: emailRecord.id,
+        email: { connect: { id: emailRecord.id } },
         bank: provider.name,
         transactionType: parsedData.transactionType,
         amount: parsedData.amount,
@@ -349,12 +387,17 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
       }
     });
 
-    await db.email.update({
+    const updatedEmail = await db.email.update({
       where: { id: emailRecord.id },
       data: { status: EmailStatus.PARSED, errorMessage: null }
     });
 
-    return { success: true, email: emailRecord, transactions: [txn] };
+    // Dispatch webhook asynchronously
+    dispatchTransactionWebhook(txn, updatedEmail).catch(err => {
+      logger.error(`Error in dispatchTransactionWebhook:`, err);
+    });
+
+    return { success: true, email: updatedEmail, transactions: [txn] };
   } else {
     // Parsing failed or needs review
     await db.email.update({
@@ -381,7 +424,7 @@ export async function parseEmailPipeline(input: ParseInput, forceReparse = false
 
       partialTxn = await db.transaction.create({
         data: {
-          emailId: emailRecord.id,
+          email: { connect: { id: emailRecord.id } },
           bank: provider.name,
           transactionType: parsedData.transactionType || "transfer_received",
           amount: parsedData.amount || 0,
