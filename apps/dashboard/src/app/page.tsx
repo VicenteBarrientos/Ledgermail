@@ -28,7 +28,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// Mock data when backend is offline
+// Datos de muestra cuando la API no esta disponible.
 const MOCK_TRANSACTIONS = [
   {
     id: "txn_1",
@@ -89,7 +89,7 @@ const MOCK_TRANSACTIONS = [
       receivedAt: new Date(Date.now() - 7200000).toISOString(),
       status: "NEEDS_REVIEW",
       errorMessage:
-        "Amount and senderName verified but reference and senderAccount missing",
+        "Monto y remitente verificados, pero faltan referencia y cuenta origen",
       cleanedHtml:
         "<div>Recibiste abono de Maria Contreras por $45.000 para cuota asado.</div>",
     },
@@ -110,7 +110,7 @@ const MOCK_TRANSACTIONS = [
         receiverAccountValid: true,
         referenceValid: false,
         success: false,
-        validationErrors: "senderAccount and reference not present in text",
+        validationErrors: "cuenta origen y referencia no aparecen en el texto",
         createdAt: new Date(Date.now() - 7200000).toISOString(),
       },
     ],
@@ -118,12 +118,12 @@ const MOCK_TRANSACTIONS = [
 ];
 
 const BENCHMARKS = [
-  { label: "Amount", value: 100.0 },
-  { label: "Date", value: 100.0 },
-  { label: "Sender Name", value: 98.5 },
-  { label: "Sender Acc", value: 76.0 },
-  { label: "Receiver Acc", value: 96.8 },
-  { label: "Reference", value: 92.0 },
+  { label: "Monto", value: 100.0 },
+  { label: "Fecha", value: 100.0 },
+  { label: "Remitente", value: 98.5 },
+  { label: "Cta. origen", value: 76.0 },
+  { label: "Cta. destino", value: 96.8 },
+  { label: "Referencia", value: 92.0 },
 ];
 
 type Toast = { type: "success" | "error" | "info"; message: string } | null;
@@ -145,6 +145,13 @@ function StatusIcon({ status }: { status: string }) {
   return <XCircle className="w-3 h-3" />;
 }
 
+function statusLabel(status: string) {
+  if (status === "PARSED") return "Analizado";
+  if (status === "NEEDS_REVIEW") return "Revisar";
+  if (status === "FAILED") return "Fallido";
+  return status.replace("_", " ");
+}
+
 function formatCurrency(amount: number | null | undefined, currency = "CLP") {
   if (amount == null) return "—";
   return `$${Number(amount).toLocaleString("es-CL")} ${currency}`;
@@ -153,18 +160,18 @@ function formatCurrency(amount: number | null | undefined, currency = "CLP") {
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "recién";
+  if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours} h`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days} d`;
 }
 
 function confidenceColor(c: number) {
-  if (c >= 0.9) return "text-emerald-400";
-  if (c >= 0.7) return "text-amber-400";
-  return "text-red-400";
+  if (c >= 0.9) return "text-emerald-700";
+  if (c >= 0.7) return "text-amber-700";
+  return "text-red-700";
 }
 
 function confidenceBarColor(c: number) {
@@ -181,10 +188,10 @@ function benchmarkColor(v: number) {
 }
 
 function benchmarkTextColor(v: number) {
-  if (v >= 95) return "text-emerald-400";
-  if (v >= 85) return "text-teal-300";
-  if (v >= 70) return "text-amber-400";
-  return "text-red-400";
+  if (v >= 95) return "text-emerald-700";
+  if (v >= 85) return "text-teal-700";
+  if (v >= 70) return "text-amber-700";
+  return "text-red-700";
 }
 
 export default function Dashboard() {
@@ -231,18 +238,18 @@ export default function Dashboard() {
     const successRate =
       total > 0 ? ((parsed / total) * 100).toFixed(1) : "0.0";
 
-    let totalCost = 0;
-    let totalLatency = 0;
+    let totalCosto = 0;
+    let totalLatencia = 0;
     let attemptCount = 0;
     for (const t of transactions) {
       for (const a of t.attempts || []) {
-        totalCost += a.costInUSD || 0;
-        totalLatency += a.latencyInMs || 0;
+        totalCosto += a.costInUSD || 0;
+        totalLatencia += a.latencyInMs || 0;
         attemptCount += 1;
       }
     }
-    const avgLatency =
-      attemptCount > 0 ? Math.round(totalLatency / attemptCount) : 0;
+    const avgLatencia =
+      attemptCount > 0 ? Math.round(totalLatencia / attemptCount) : 0;
 
     return {
       total,
@@ -250,13 +257,13 @@ export default function Dashboard() {
       needsReview,
       failed,
       successRate,
-      totalCost,
-      avgLatency,
+      totalCosto,
+      avgLatencia,
     };
   }, [transactions]);
 
   useEffect(() => {
-    fetchPayments();
+    fetchPagos();
     fetchMailboxes();
   }, []);
 
@@ -278,7 +285,7 @@ export default function Dashboard() {
         setMailboxSources(data);
       }
     } catch (err) {
-      console.error("Failed to load mailboxes:", err);
+      console.error("No se pudieron cargar las casillas:", err);
     }
   };
 
@@ -296,7 +303,7 @@ export default function Dashboard() {
         }),
       });
       if (res.ok) {
-        showToast("success", "Gmail account connected successfully.");
+        showToast("success", "Cuenta de Gmail conectada correctamente.");
         const cleanUrl =
           window.location.protocol +
           "//" +
@@ -304,13 +311,13 @@ export default function Dashboard() {
           window.location.pathname;
         window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
         fetchMailboxes();
-        fetchPayments();
+        fetchPagos();
       } else {
         const error = await res.json();
-        showToast("error", `Failed to connect Gmail: ${error.error}`);
+        showToast("error", `No se pudo conectar Gmail: ${error.error}`);
       }
     } catch (err: any) {
-      showToast("error", `Error connecting Gmail: ${err.message}`);
+      showToast("error", `Error al conectar Gmail: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -325,10 +332,10 @@ export default function Dashboard() {
           window.location.href = data.url;
         }
       } else {
-        showToast("error", "Failed to get Google authorization URL.");
+        showToast("error", "No se pudo obtener la URL de autorizacion de Google.");
       }
     } catch (err: any) {
-      showToast("error", `Failed to connect to LedgerMail API: ${err.message}`);
+      showToast("error", `No se pudo conectar con la API de LedgerMail: ${err.message}`);
     }
   };
 
@@ -337,12 +344,12 @@ export default function Dashboard() {
     if (mailboxSources.length === 0) {
       showToast(
         "error",
-        "Connect a mailbox source first so we have an owner ID for this test."
+        "Conecta primero una casilla para tener un ID de propietario para esta prueba."
       );
       return;
     }
     if (!testBodyHtml) {
-      showToast("error", "Paste HTML or raw email body text first.");
+      showToast("error", "Pega primero HTML o texto del correo.");
       return;
     }
 
@@ -360,24 +367,24 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast("success", "Email parsed successfully. Refreshing list…");
+        showToast("success", "Correo analizado correctamente. Actualizando lista…");
         setShowTestParser(false);
         setTestBodyHtml("");
-        fetchPayments();
+        fetchPagos();
       } else {
         showToast(
           "error",
-          `Parsing failed: ${data.error || "Validation check error"}`
+          `Falló el análisis: ${data.error || "Error de validación"}`
         );
       }
     } catch (err: any) {
-      showToast("error", `Network error calling parser: ${err.message}`);
+      showToast("error", `Error de red al llamar al parser: ${err.message}`);
     } finally {
       setIsParsingTest(false);
     }
   };
 
-  const fetchPayments = async () => {
+  const fetchPagos = async () => {
     setIsLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/payments`);
@@ -392,7 +399,7 @@ export default function Dashboard() {
         setApiOnline(false);
       }
     } catch (err) {
-      console.error("API offline, displaying dashboard in sandbox mode.", err);
+      console.error("API fuera de línea; mostrando el panel en modo demo.", err);
       setApiOnline(false);
     } finally {
       setIsLoading(false);
@@ -403,7 +410,7 @@ export default function Dashboard() {
     if (mailboxSources.length === 0) {
       showToast(
         "error",
-        "No active mailbox sources. Connect Gmail first."
+        "No hay casillas activas. Conecta Gmail primero."
       );
       return;
     }
@@ -420,26 +427,26 @@ export default function Dashboard() {
         const result = await res.json();
         showToast(
           "success",
-          `Sync done — ${result.summary.synced} synced, ${result.summary.parsedSuccessfully} parsed, ${result.summary.needsReview} need review.`
+          `Sincronización lista: ${result.summary.synced} sincronizados, ${result.summary.parsedSuccessfully} analizados, ${result.summary.needsReview} requieren revisión.`
         );
-        fetchPayments();
+        fetchPagos();
       } else {
         showToast(
           "error",
-          "Gmail sync failed. Verify mailbox configuration."
+          "Falló la sincronización de Gmail. Revisa la configuración de la casilla."
         );
       }
     } catch {
       showToast(
         "error",
-        "Failed to reach API gateway. Running in sandbox mode."
+        "No se pudo alcanzar la API. Ejecutando en modo demo."
       );
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleTriggerReplay = async () => {
+  const handleTriggerReprocesar = async () => {
     if (!selectedTxn) return;
     setIsLoading(true);
     try {
@@ -453,15 +460,15 @@ export default function Dashboard() {
         }),
       });
       if (res.ok) {
-        showToast("success", "Replay completed. Refreshing payment details…");
-        fetchPayments();
+        showToast("success", "Reproceso completado. Actualizando detalles del pago…");
+        fetchPagos();
       } else {
-        showToast("error", "Reparse trigger failed.");
+        showToast("error", "No se pudo iniciar el reproceso.");
       }
     } catch {
       showToast(
         "info",
-        "API offline — replay simulated. Connect the API for live reparse."
+        "API fuera de línea: reproceso simulado. Conecta la API para reprocesar en vivo."
       );
     } finally {
       setIsLoading(false);
@@ -488,7 +495,7 @@ export default function Dashboard() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      showToast("error", "Could not copy to clipboard.");
+      showToast("error", "No se pudo copiar al portapapeles.");
     }
   };
 
@@ -510,21 +517,21 @@ export default function Dashboard() {
 
   const fieldRows = selectedTxn
     ? [
-        { label: "Bank", value: selectedTxn.bank },
+        { label: "Banco", value: selectedTxn.bank },
         {
-          label: "Amount",
+          label: "Monto",
           value: formatCurrency(selectedTxn.amount, selectedTxn.currency),
         },
-        { label: "Sender", value: selectedTxn.senderName || "—" },
-        { label: "Sender account", value: selectedTxn.senderAccount || "—" },
+        { label: "Remitente", value: selectedTxn.senderName || "—" },
+        { label: "Cuenta origen", value: selectedTxn.senderAccount || "—" },
         {
-          label: "Receiver account",
+          label: "Cuenta destino",
           value: selectedTxn.receiverAccount || "—",
         },
-        { label: "Reference", value: selectedTxn.reference || "—" },
-        { label: "Description", value: selectedTxn.description || "—" },
+        { label: "Referencia", value: selectedTxn.reference || "—" },
+        { label: "Descripción", value: selectedTxn.description || "—" },
         {
-          label: "Confidence",
+          label: "Confianza",
           value: `${((selectedTxn.confidence ?? 0) * 100).toFixed(0)}%`,
         },
       ]
@@ -533,15 +540,15 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen">
       {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[#0a0c10]/92 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur-xl">
         <div className="max-w-[1280px] mx-auto px-6 sm:px-10 lg:px-12 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-[#eef2f7] text-[#0c1117] flex items-center justify-center shadow-sm shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[#236b5f] text-white flex items-center justify-center shadow-sm shrink-0">
               <Mail className="w-4 h-4" strokeWidth={2.25} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold text-white truncate">
+                <h1 className="text-base sm:text-lg font-bold text-slate-950 truncate">
                   LedgerMail
                 </h1>
                 <span className="badge badge-info hidden sm:inline-flex">
@@ -549,7 +556,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 truncate">
-                AI bank notification parser console
+                Consola de lectura de notificaciones bancarias
               </p>
             </div>
           </div>
@@ -558,33 +565,33 @@ export default function Dashboard() {
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
                 apiOnline
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-700 border-amber-500/20"
               }`}
             >
               <span className={apiOnline ? "dot-live" : "dot-offline"} />
               <Server className="w-3.5 h-3.5" />
-              {apiOnline ? "API online" : "Sandbox mode"}
+              {apiOnline ? "API conectada" : "Modo demo"}
             </div>
 
             <button
               onClick={() => setShowTestParser((v) => !v)}
               className={`btn btn-secondary ${
-                showTestParser ? "border-teal-400/40 text-teal-100" : ""
+                showTestParser ? "border-teal-700/40 text-teal-700" : ""
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">
-                {showTestParser ? "Hide parser" : "Test parser"}
+                {showTestParser ? "Ocultar parser" : "Probar parser"}
               </span>
               <span className="sm:hidden">Test</span>
             </button>
 
             <button
-              onClick={fetchPayments}
+              onClick={fetchPagos}
               disabled={isLoading}
               className="btn btn-ghost"
-              title="Refresh payments"
+              title="Actualizar pagos"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`}
@@ -599,7 +606,7 @@ export default function Dashboard() {
               <RefreshCw
                 className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
               />
-              {isSyncing ? "Syncing…" : "Sync inbox"}
+              {isSyncing ? "Sincronizando…" : "Sincronizar bandeja"}
             </button>
           </div>
         </div>
@@ -634,18 +641,18 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Test parser panel */}
+        {/* Probar parser panel */}
         {showTestParser && (
           <section className="glass-card p-6 rounded-lg border border-teal-400/24 bg-teal-400/[0.04] animate-slideDown">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Zap className="text-teal-300 w-4 h-4" />
-                  Manual email parser
+                <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-2">
+                  <Zap className="text-teal-700 w-4 h-4" />
+                  Parser manual de correos
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Paste a bank notification to run the full parse pipeline
-                  without syncing Gmail.
+                  Pega una notificación bancaria para ejecutar el flujo completo
+                  sin sincronizar Gmail.
                 </p>
               </div>
               <button
@@ -661,7 +668,7 @@ export default function Dashboard() {
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
               <div className="flex flex-col gap-1.5">
-                <label className="field-label">Sender from address</label>
+                <label className="field-label">Remitente</label>
                 <input
                   type="text"
                   value={testFrom}
@@ -671,7 +678,7 @@ export default function Dashboard() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="field-label">Email subject</label>
+                <label className="field-label">Asunto del correo</label>
                 <input
                   type="text"
                   value={testSubject}
@@ -682,12 +689,12 @@ export default function Dashboard() {
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label className="field-label">
-                  Email body (HTML or raw text)
+                  Cuerpo del correo (HTML o texto)
                 </label>
                 <textarea
                   value={testBodyHtml}
                   onChange={(e) => setTestBodyHtml(e.target.value)}
-                  placeholder="Paste Banco de Chile (or other) notification markup…"
+                  placeholder="Pega el HTML o texto de una notificación bancaria…"
                   rows={6}
                   className="input-field font-mono"
                   required
@@ -699,7 +706,7 @@ export default function Dashboard() {
                   onClick={() => setShowTestParser(false)}
                   className="btn btn-ghost"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   type="submit"
@@ -709,12 +716,12 @@ export default function Dashboard() {
                   {isParsingTest ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      Parsing…
+                      Analizando…
                     </>
                   ) : (
                     <>
                       <Play className="w-3.5 h-3.5" />
-                      Parse test email
+                      Analizar correo
                     </>
                   )}
                 </button>
@@ -727,32 +734,32 @@ export default function Dashboard() {
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
-              label: "Processed",
+              label: "Procesados",
               value: stats.total,
-              sub: `${stats.parsed} parsed · ${stats.needsReview} review`,
+              sub: `${stats.parsed} analizados · ${stats.needsReview} por revisar`,
               icon: Inbox,
-              iconClass: "bg-teal-500/15 text-teal-300",
+              iconClass: "bg-teal-500/15 text-teal-700",
             },
             {
-              label: "Accuracy",
+              label: "Precisión",
               value: `${stats.successRate}%`,
-              sub: stats.failed ? `${stats.failed} failed` : "All systems go",
+              sub: stats.failed ? `${stats.failed} fallidos` : "Todo correcto",
               icon: Shield,
-              iconClass: "bg-emerald-500/15 text-emerald-400",
+              iconClass: "bg-emerald-500/15 text-emerald-700",
             },
             {
-              label: "LLM cost",
-              value: `$${stats.totalCost.toFixed(5)}`,
-              sub: "Cumulative parse spend",
+              label: "Costo LLM",
+              value: `$${stats.totalCosto.toFixed(5)}`,
+              sub: "Gasto acumulado de análisis",
               icon: Coins,
-              iconClass: "bg-cyan-500/12 text-cyan-300",
+              iconClass: "bg-cyan-500/12 text-cyan-700",
             },
             {
-              label: "Avg latency",
-              value: stats.avgLatency ? `${stats.avgLatency} ms` : "—",
-              sub: "Across parse attempts",
+              label: "Latencia prom.",
+              value: stats.avgLatencia ? `${stats.avgLatencia} ms` : "—",
+              sub: "En todos los intentos",
               icon: Activity,
-              iconClass: "bg-sky-500/15 text-sky-400",
+              iconClass: "bg-sky-500/15 text-sky-700",
             },
           ].map((m) => (
             <div
@@ -764,7 +771,7 @@ export default function Dashboard() {
                   <span className="text-[11px] font-medium text-slate-500 uppercase">
                     {m.label}
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mt-1 tabular-nums">
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-950 mt-1 tabular-nums">
                     {m.value}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-1.5 truncate">
@@ -784,9 +791,9 @@ export default function Dashboard() {
           <div className="glass-card p-6 rounded-lg flex flex-col gap-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-teal-300" />
-                <h2 className="text-sm font-semibold text-white">
-                  Mailbox sources
+                <Database className="w-4 h-4 text-teal-700" />
+                <h2 className="text-sm font-semibold text-slate-950">
+                  Casillas conectadas
                 </h2>
               </div>
               <span className="badge badge-neutral">
@@ -796,30 +803,30 @@ export default function Dashboard() {
 
             <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-0.5">
               {mailboxSources.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[#0d1016] px-5 py-9 text-center">
-                  <Link2 className="w-7 h-7 text-slate-600 mx-auto mb-2" />
+                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-white px-5 py-9 text-center">
+                  <Link2 className="w-7 h-7 text-slate-500 mx-auto mb-2" />
                   <p className="text-xs text-slate-500">
-                    No sources connected yet.
+                    No hay casillas conectadas.
                   </p>
-                  <p className="text-[11px] text-slate-600 mt-1">
-                    Link Gmail to sync bank notifications.
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Conecta Gmail para sincronizar notificaciones bancarias.
                   </p>
                 </div>
               ) : (
                 mailboxSources.map((source) => (
                   <div
                     key={source.id}
-                    className="p-4 rounded-lg bg-[#0d1016] border border-[var(--border)] flex justify-between items-start gap-3"
+                    className="p-4 rounded-lg bg-white border border-[var(--border)] flex justify-between items-start gap-3"
                   >
                     <div className="min-w-0">
-                      <h4 className="text-sm font-medium text-slate-100 truncate">
+                      <h4 className="text-sm font-medium text-slate-900 truncate">
                         {source.name}
                       </h4>
                       <p className="text-xs text-slate-500 mt-0.5 truncate">
                         {source.emailAddress}
                       </p>
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
-                        <span className="badge badge-success">Active</span>
+                        <span className="badge badge-success">Activa</span>
                         <span className="badge badge-neutral">
                           {source.type === "GMAIL_OAUTH"
                             ? "Gmail OAuth"
@@ -837,20 +844,20 @@ export default function Dashboard() {
               className="btn btn-secondary w-full"
             >
               <Link2 className="w-3.5 h-3.5" />
-              Register new source
+              Conectar nueva casilla
             </button>
           </div>
 
           <div className="glass-card p-6 rounded-lg lg:col-span-2 flex flex-col gap-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-teal-300" />
-                <h2 className="text-sm font-semibold text-white">
-                  Field-level benchmarks
+                <BarChart3 className="w-4 h-4 text-teal-700" />
+                <h2 className="text-sm font-semibold text-slate-950">
+                  Precisión por campo
                 </h2>
               </div>
               <span className="text-[11px] text-slate-500">
-                Banco de Chile · fixture suite
+                Banco de Chile · pruebas internas
               </span>
             </div>
 
@@ -858,7 +865,7 @@ export default function Dashboard() {
               {BENCHMARKS.map((b) => (
                 <div
                   key={b.label}
-                  className="p-4 rounded-lg bg-[#0d1016] border border-[var(--border)]"
+                  className="p-4 rounded-lg bg-white border border-[var(--border)]"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] text-slate-500 font-semibold uppercase">
@@ -890,9 +897,9 @@ export default function Dashboard() {
           <section className="xl:col-span-2 glass-card rounded-lg flex flex-col overflow-hidden max-h-[720px]">
             <div className="p-5 border-b border-[var(--border)] space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Inbox className="w-4 h-4 text-teal-300" />
-                  Payments
+                <h2 className="text-sm font-semibold text-slate-950 flex items-center gap-2">
+                  <Inbox className="w-4 h-4 text-teal-700" />
+                  Pagos
                 </h2>
                 <span className="badge badge-neutral">
                   {filteredTransactions.length}
@@ -906,7 +913,7 @@ export default function Dashboard() {
                   <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search sender, bank, amount…"
+                    placeholder="Buscar remitente, banco o monto…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="input-field pl-9"
@@ -917,10 +924,10 @@ export default function Dashboard() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="input-field w-auto min-w-[7.5rem]"
                 >
-                  <option value="ALL">All status</option>
-                  <option value="PARSED">Parsed</option>
-                  <option value="NEEDS_REVIEW">Needs review</option>
-                  <option value="FAILED">Failed</option>
+                  <option value="ALL">Todos</option>
+                  <option value="PARSED">Analizados</option>
+                  <option value="NEEDS_REVIEW">Revisar</option>
+                  <option value="FAILED">Fallidos</option>
                 </select>
               </div>
             </div>
@@ -932,10 +939,10 @@ export default function Dashboard() {
                 ))
               ) : filteredTransactions.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-14 text-center px-6">
-                  <Search className="w-8 h-8 text-slate-700 mb-3" />
-                  <p className="text-sm text-slate-400">No matching payments</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Try another search or clear the status filter.
+                  <Search className="w-8 h-8 text-slate-400 mb-3" />
+                  <p className="text-sm text-slate-500">No hay pagos coincidentes</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Prueba otra búsqueda o limpia el filtro.
                   </p>
                 </div>
               ) : (
@@ -961,21 +968,21 @@ export default function Dashboard() {
                         </span>
                         <span className={statusBadgeClass(status)}>
                           <StatusIcon status={status} />
-                          {status.replace("_", " ")}
+                          {statusLabel(status)}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-end gap-3 mt-2">
                         <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-slate-100 truncate">
-                            {txn.senderName || "Unknown sender"}
+                          <h4 className="text-sm font-semibold text-slate-900 truncate">
+                            {txn.senderName || "Remitente desconocido"}
                           </h4>
                           <span className="text-[11px] text-slate-500">
                             {formatRelativeTime(txn.createdAt)}
                           </span>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="text-sm font-bold text-white tabular-nums block">
+                          <span className="text-sm font-bold text-slate-950 tabular-nums block">
                             {formatCurrency(txn.amount, txn.currency)}
                           </span>
                         </div>
@@ -1021,36 +1028,33 @@ export default function Dashboard() {
                           <StatusIcon
                             status={selectedTxn.email?.status || "PARSED"}
                           />
-                          {(selectedTxn.email?.status || "PARSED").replace(
-                            "_",
-                            " "
-                          )}
+                          {statusLabel(selectedTxn.email?.status || "PARSED")}
                         </span>
                         <span className="badge badge-neutral">
                           {selectedTxn.bank}
                         </span>
                       </div>
-                      <h2 className="text-lg font-semibold text-white truncate">
-                        {selectedTxn.senderName || "Unknown sender"}
+                      <h2 className="text-lg font-semibold text-slate-950 truncate">
+                        {selectedTxn.senderName || "Remitente desconocido"}
                       </h2>
                       <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
                         <Mail className="w-3 h-3 shrink-0" />
-                        {selectedTxn.email?.subject || "No subject"}
+                        {selectedTxn.email?.subject || "Sin asunto"}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <h3 className="text-xl font-bold text-white tabular-nums">
+                      <h3 className="text-xl font-bold text-slate-950 tabular-nums">
                         {formatCurrency(
                           selectedTxn.amount,
                           selectedTxn.currency
                         )}
                       </h3>
                       <span className="text-[11px] text-slate-500 block mt-1">
-                        {new Date(selectedTxn.createdAt).toLocaleString()}
+                        {new Date(selectedTxn.createdAt).toLocaleString("es-CL")}
                       </span>
                       <div className="mt-2 flex items-center justify-end gap-2">
                         <span className="text-[10px] text-slate-500">
-                          Confidence
+                          Confianza
                         </span>
                         <span
                           className={`text-xs font-bold tabular-nums ${confidenceColor(
@@ -1077,11 +1081,11 @@ export default function Dashboard() {
                   <div className="tab-list overflow-x-auto">
                     {(
                       [
-                        ["fields", FileText, "Fields"],
+                        ["fields", FileText, "Campos"],
                         ["json", Database, "JSON"],
                         ["html", FileText, "HTML"],
-                        ["attempts", Clock, "Attempts"],
-                        ["replay", Play, "Replay"],
+                        ["attempts", Clock, "Intentos"],
+                        ["replay", Play, "Reprocesar"],
                       ] as const
                     ).map(([id, Icon, label]) => (
                       <button
@@ -1121,12 +1125,12 @@ export default function Dashboard() {
                         {copied ? (
                           <>
                             <Check className="w-3 h-3" />
-                            Copied
+                            Copiado
                           </>
                         ) : (
                           <>
                             <Copy className="w-3 h-3" />
-                            Copy
+                            Copiar
                           </>
                         )}
                       </button>
@@ -1153,14 +1157,14 @@ export default function Dashboard() {
                   )}
 
                   {activeTab === "html" && (
-                    <div className="code-block text-slate-300">
-                      <div className="mb-3 text-[10px] text-teal-300 border-b border-[var(--border)] pb-2 font-semibold uppercase">
-                        Preprocessed clean HTML (sent to LLM)
+                    <div className="code-block text-slate-400">
+                      <div className="mb-3 text-[10px] text-teal-700 border-b border-[var(--border)] pb-2 font-semibold uppercase">
+                        HTML limpio preprocesado (enviado al LLM)
                       </div>
                       <div className="whitespace-pre-wrap break-all">
                         {selectedTxn.email?.cleanedHtml || (
-                          <span className="text-slate-600 italic">
-                            No cleaned HTML available.
+                          <span className="text-slate-500 italic">
+                            No hay HTML limpio disponible.
                           </span>
                         )}
                       </div>
@@ -1171,20 +1175,20 @@ export default function Dashboard() {
                     <div className="flex flex-col gap-3">
                       {!selectedTxn.attempts?.length ? (
                         <div className="text-center py-10 text-xs text-slate-500">
-                          No parse attempts logged for this payment.
+                          No hay intentos de análisis registrados para este pago.
                         </div>
                       ) : (
                         selectedTxn.attempts.map((att: any, idx: number) => (
                           <div
                             key={att.id || idx}
-                            className="p-5 rounded-lg bg-[#0d1016] border border-[var(--border)] flex flex-col gap-4"
+                            className="p-5 rounded-lg bg-white border border-[var(--border)] flex flex-col gap-4"
                           >
                             <div className="flex flex-wrap justify-between items-center gap-2 border-b border-[var(--border)] pb-2.5">
-                              <span className="text-xs font-bold text-white uppercase flex items-center gap-1.5">
-                                <Settings className="w-3.5 h-3.5 text-slate-400" />
-                                Attempt #{idx + 1}
-                                <ChevronRight className="w-3 h-3 text-slate-600" />
-                                <span className="text-teal-300 font-medium normal-case">
+                              <span className="text-xs font-bold text-slate-950 uppercase flex items-center gap-1.5">
+                                <Settings className="w-3.5 h-3.5 text-slate-500" />
+                                Intento #{idx + 1}
+                                <ChevronRight className="w-3 h-3 text-slate-500" />
+                                <span className="text-teal-700 font-medium normal-case">
                                   {att.llmProvider}
                                 </span>
                               </span>
@@ -1195,16 +1199,16 @@ export default function Dashboard() {
                                     : "badge badge-danger"
                                 }
                               >
-                                {att.success ? "Success" : "Failed"}
+                                {att.success ? "Correcto" : "Fallido"}
                               </span>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                               <div>
                                 <span className="text-slate-500 text-[10px] uppercase font-semibold">
-                                  Model
+                                  Modelo
                                 </span>
-                                <span className="text-slate-200 block font-medium mt-0.5">
+                                <span className="text-slate-800 block font-medium mt-0.5">
                                   {att.modelName}
                                 </span>
                               </div>
@@ -1212,24 +1216,24 @@ export default function Dashboard() {
                                 <span className="text-slate-500 text-[10px] uppercase font-semibold">
                                   Tokens
                                 </span>
-                                <span className="text-slate-200 block font-medium mt-0.5 tabular-nums">
+                                <span className="text-slate-800 block font-medium mt-0.5 tabular-nums">
                                   {(att.promptTokens || 0) +
                                     (att.completionTokens || 0)}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-slate-500 text-[10px] uppercase font-semibold">
-                                  Cost
+                                  Costo
                                 </span>
-                                <span className="text-slate-200 block font-medium mt-0.5 tabular-nums">
+                                <span className="text-slate-800 block font-medium mt-0.5 tabular-nums">
                                   ${(att.costInUSD || 0).toFixed(5)}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-slate-500 text-[10px] uppercase font-semibold">
-                                  Latency
+                                  Latencia
                                 </span>
-                                <span className="text-slate-200 block font-medium mt-0.5 tabular-nums">
+                                <span className="text-slate-800 block font-medium mt-0.5 tabular-nums">
                                   {att.latencyInMs} ms
                                 </span>
                               </div>
@@ -1265,9 +1269,9 @@ export default function Dashboard() {
                             </div>
 
                             {att.validationErrors && (
-                              <div className="p-2.5 rounded-lg bg-red-950/25 border border-red-500/20 text-[11px] text-red-300 leading-relaxed font-mono">
+                              <div className="p-2.5 rounded-lg bg-red-50 border border-red-500/20 text-[11px] text-red-700 leading-relaxed font-mono">
                                 <strong className="font-semibold">
-                                  Validation:
+                                  Validación:
                                 </strong>{" "}
                                 {att.validationErrors}
                               </div>
@@ -1279,18 +1283,18 @@ export default function Dashboard() {
                   )}
 
                   {activeTab === "replay" && (
-                    <div className="flex flex-col gap-5 p-5 rounded-lg bg-[#0d1016] border border-[var(--border)]">
-                      <div className="flex items-start gap-2.5 text-teal-300 text-xs">
+                    <div className="flex flex-col gap-5 p-5 rounded-lg bg-white border border-[var(--border)]">
+                      <div className="flex items-start gap-2.5 text-teal-700 text-xs">
                         <Info className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>
-                          Reprocess this email with another model — no extra
-                          Gmail fetch. Useful for comparing accuracy and cost.
+                          Reprocesa este correo con otro modelo, sin volver a
+                          consultar Gmail. Útil para comparar precisión y costo.
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="field-label">LLM provider</label>
+                          <label className="field-label">Proveedor LLM</label>
                           <select
                             value={replayProvider}
                             onChange={(e) => {
@@ -1311,7 +1315,7 @@ export default function Dashboard() {
                         </div>
 
                         <div>
-                          <label className="field-label">Model</label>
+                          <label className="field-label">Modelo</label>
                           <select
                             value={replayModel}
                             onChange={(e) => setReplayModel(e.target.value)}
@@ -1346,12 +1350,12 @@ export default function Dashboard() {
                       </div>
 
                       <button
-                        onClick={handleTriggerReplay}
+                        onClick={handleTriggerReprocesar}
                         disabled={isLoading}
                         className="btn btn-primary w-full py-2.5 mt-1"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
-                        {isLoading ? "Running parse…" : "Execute replay"}
+                        {isLoading ? "Analizando…" : "Ejecutar reproceso"}
                       </button>
                     </div>
                   )}
@@ -1359,21 +1363,21 @@ export default function Dashboard() {
               </>
             ) : (
               <div className="flex-1 flex flex-col justify-center items-center text-slate-500 p-8">
-                <div className="w-16 h-16 rounded-lg bg-[#0d1016] border border-[var(--border)] flex items-center justify-center mb-4">
-                  <Mail className="w-7 h-7 text-slate-600" />
+                <div className="w-16 h-16 rounded-lg bg-white border border-[var(--border)] flex items-center justify-center mb-4">
+                  <Mail className="w-7 h-7 text-slate-500" />
                 </div>
-                <p className="text-sm text-slate-400">Select a payment</p>
-                <p className="text-xs text-slate-600 mt-1 text-center max-w-xs">
-                  Choose a transaction from the list to inspect fields, HTML,
-                  logs, and replay options.
+                <p className="text-sm text-slate-500">Selecciona un pago</p>
+                <p className="text-xs text-slate-500 mt-1 text-center max-w-xs">
+                  Elige una transacción de la lista para revisar campos, HTML,
+                  registros y opciones de reproceso.
                 </p>
               </div>
             )}
           </section>
         </main>
 
-        <footer className="pt-2 pb-6 text-center text-[11px] text-slate-600">
-          LedgerMail Console · AI-powered transactional document parsing · MVP
+        <footer className="pt-2 pb-6 text-center text-[11px] text-slate-500">
+          LedgerMail · Lectura inteligente de notificaciones bancarias · MVP
           v1
         </footer>
       </div>

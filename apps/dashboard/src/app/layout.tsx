@@ -2,9 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "LedgerMail Console",
+  title: "Consola LedgerMail",
   description:
-    "AI-powered bank notification parser — sync, clean, and parse transfers into structured JSON",
+    "Parser de notificaciones bancarias con IA: sincroniza, limpia y estructura transferencias",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
