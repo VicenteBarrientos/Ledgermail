@@ -10,8 +10,7 @@ const SALUDO: Mensaje = {
 };
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  "http://localhost:3002";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "/ledger-api";
 
 function cn(...classes: (string | boolean | undefined | null)[]) {
   return classes.filter(Boolean).join(" ");

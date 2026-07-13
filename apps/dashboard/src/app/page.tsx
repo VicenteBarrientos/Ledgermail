@@ -129,9 +129,10 @@ const BENCHMARKS = [
 type Toast = { type: "success" | "error" | "info"; message: string } | null;
 type Tab = "fields" | "json" | "html" | "attempts" | "replay";
 
+// Prefer same-origin proxy (see next.config.js rewrites → port 3002).
+// Set NEXT_PUBLIC_API_URL only if you must call the API on another host.
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  "http://localhost:3002";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "/ledger-api";
 
 function statusBadgeClass(status: string) {
   if (status === "PARSED") return "badge badge-success";
@@ -271,8 +272,13 @@ export default function Dashboard() {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get("code");
+      const state = urlParams.get("state") || "gmail";
       if (code) {
-        connectGmail(code);
+        if (state === "outlook") {
+          connectOAuthProvider("outlook", code);
+        } else {
+          connectOAuthProvider("gmail", code);
+        }
       }
     }
   }, []);
@@ -289,21 +295,28 @@ export default function Dashboard() {
     }
   };
 
-  const connectGmail = async (code: string) => {
+  const connectOAuthProvider = async (
+    provider: "gmail" | "outlook",
+    code: string
+  ) => {
     setIsLoading(true);
+    const endpoint =
+      provider === "outlook" ? "/api/outlook/connect" : "/api/gmail/connect";
+    const label = provider === "outlook" ? "Outlook / Hotmail" : "Gmail";
     try {
-      const res = await fetch(`${API_BASE}/api/gmail/connect`, {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code,
-          userId: "default-user",
-          name: "Gmail Inbox",
-          emailAddress: "comunidad@ledgermail.com",
+          name:
+            provider === "outlook"
+              ? "Outlook / Hotmail"
+              : "Gmail personal (bridge)",
         }),
       });
       if (res.ok) {
-        showToast("success", "Cuenta de Gmail conectada correctamente.");
+        showToast("success", `Cuenta de ${label} conectada correctamente.`);
         const cleanUrl =
           window.location.protocol +
           "//" +
@@ -314,30 +327,47 @@ export default function Dashboard() {
         fetchPagos();
       } else {
         const error = await res.json();
-        showToast("error", `No se pudo conectar Gmail: ${error.error}`);
+        showToast("error", `No se pudo conectar ${label}: ${error.error}`);
       }
     } catch (err: any) {
-      showToast("error", `Error al conectar Gmail: ${err.message}`);
+      showToast("error", `Error al conectar ${label}: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRegisterSource = async () => {
+  const startOAuth = async (provider: "gmail" | "outlook") => {
     try {
-      const res = await fetch(`${API_BASE}/api/gmail/auth-url`);
+      const path =
+        provider === "outlook"
+          ? "/api/outlook/auth-url"
+          : "/api/gmail/auth-url";
+      const res = await fetch(`${API_BASE}${path}`);
       if (res.ok) {
         const data = await res.json();
         if (data.url) {
           window.location.href = data.url;
         }
       } else {
-        showToast("error", "No se pudo obtener la URL de autorizacion de Google.");
+        const error = await res.json().catch(() => ({}));
+        showToast(
+          "error",
+          error.error ||
+            (provider === "outlook"
+              ? "No se pudo obtener la URL de Microsoft. Configura OUTLOOK_CLIENT_ID/SECRET."
+              : "No se pudo obtener la URL de autorizacion de Google.")
+        );
       }
     } catch (err: any) {
-      showToast("error", `No se pudo conectar con la API de LedgerMail: ${err.message}`);
+      showToast(
+        "error",
+        `No se pudo conectar con la API de LedgerMail: ${err.message}`
+      );
     }
   };
+
+  const handleRegisterSource = async () => startOAuth("gmail");
+  const handleRegisterOutlook = async () => startOAuth("outlook");
 
   const handleParseTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -809,7 +839,7 @@ export default function Dashboard() {
                     No hay casillas conectadas.
                   </p>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Conecta Gmail para sincronizar notificaciones bancarias.
+                    Conecta Gmail u Outlook/Hotmail para clientes y bancos.
                   </p>
                 </div>
               ) : (
@@ -830,7 +860,9 @@ export default function Dashboard() {
                         <span className="badge badge-neutral">
                           {source.type === "GMAIL_OAUTH"
                             ? "Gmail OAuth"
-                            : source.type}
+                            : source.type === "OUTLOOK_OAUTH"
+                              ? "Outlook OAuth"
+                              : source.type}
                         </span>
                       </div>
                     </div>
@@ -839,13 +871,24 @@ export default function Dashboard() {
               )}
             </div>
 
-            <button
-              onClick={handleRegisterSource}
-              className="btn btn-secondary w-full"
-            >
-              <Link2 className="w-3.5 h-3.5" />
-              Conectar nueva casilla
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleRegisterSource}
+                className="btn btn-secondary w-full"
+                disabled={isLoading}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                Conectar Gmail
+              </button>
+              <button
+                onClick={handleRegisterOutlook}
+                className="btn btn-secondary w-full"
+                disabled={isLoading}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                Conectar Outlook / Hotmail
+              </button>
+            </div>
           </div>
 
           <div className="glass-card p-6 rounded-lg lg:col-span-2 flex flex-col gap-5">

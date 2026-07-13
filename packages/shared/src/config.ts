@@ -32,7 +32,13 @@ export const config = {
   gmail: {
     clientId: process.env.GMAIL_CLIENT_ID || "",
     clientSecret: process.env.GMAIL_CLIENT_SECRET || "",
-    redirectUri: process.env.GMAIL_REDIRECT_URI || "http://localhost:3000/api/auth/callback/google",
+    redirectUri: process.env.GMAIL_REDIRECT_URI || "http://localhost:3000",
+  },
+  /** Microsoft Graph — personal Hotmail/Outlook.com + work/school (tenant common) */
+  outlook: {
+    clientId: process.env.OUTLOOK_CLIENT_ID || "",
+    clientSecret: process.env.OUTLOOK_CLIENT_SECRET || "",
+    redirectUri: process.env.OUTLOOK_REDIRECT_URI || "http://localhost:3000",
   },
   auth: {
     nextauthSecret: process.env.NEXTAUTH_SECRET || "supersecretnextauthsecretkey",

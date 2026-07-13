@@ -73,13 +73,55 @@ npm run dev
 
 ---
 
-## Regression Testing Suite
+## Testing Strategy
 
-To execute the unit tests and check Banco de Chile parsing against the fixture files, run:
+LedgerMail's testing is layered so that fast, free checks run on every push, while
+the checks that cost real LLM tokens and depend on live Gmail run on a schedule instead.
+
+### 1. Unit & regression tests (every push/PR, via CI)
 ```bash
 npm run test
 ```
-This runs Vitest on the tests folder, executing structural clean checks, amount normalizers, confidence score assertions, and fixture validations.
+Runs Vitest across every workspace. `packages/core/test/fixtures.test.ts` mocks the DB
+and LLM, then replays every HTML fixture in `/fixtures` through the real pipeline and
+asserts the extracted fields match the corresponding `.expected.json`. `apps/api/test/api.test.ts`
+does the same for the HTTP layer (status codes, validation, pagination, summary
+aggregation) with `@ledgermail/database`, `@ledgermail/core` and `@ledgermail/gmail` mocked.
+Zero network calls, zero cost — this is what `.github/workflows/ci.yml` runs on every
+push and pull request.
+
+When a new bank provider gets fully implemented, add its anonymized HTML + expected JSON
+under `/fixtures/<bank>/` and the fixture test picks it up automatically.
+
+### 2. Synthetic canary (scheduled, via `.github/workflows/canary.yml`)
+```bash
+npm run canary
+```
+This is the "test agent that acts like a user" — it exercises the live, deployed system,
+not mocks. See `scripts/canary/run-canary.ts` for the full design. Two independent tiers:
+
+- **Tier A — Gmail ingestion liveness.** Sends a real email over SMTP to a dedicated
+  test inbox connected to LedgerMail, then polls `POST /api/gmail/sync` until that
+  message shows up. Proves OAuth token refresh, the Gmail API fetch, and the dedupe/DB-write
+  path are alive — independent of whether the email matches a bank fingerprint.
+- **Tier B — parse/validate/DB/webhook pipeline.** Calls `POST /api/parse` directly
+  with the real Banco de Chile fixture (unique folio/amount per run) and asserts every
+  extracted field matches exactly. This is what actually proves detection, sanitization,
+  the live LLM call, Zod validation, the DB write, and the CondoSync webhook dispatch
+  still work end to end.
+
+Runs every 6 hours by default (see the workflow's cron) and posts to
+`CANARY_ALERT_WEBHOOK_URL` (a Slack incoming webhook, or any URL accepting `{text}`)
+only when something fails. Required secrets are listed in `.env.example` under the
+"Synthetic Canary" section and must be set as GitHub Actions secrets
+(`CANARY_API_BASE_URL`, `CANARY_SMTP_USER`, `CANARY_SMTP_PASS`, `CANARY_TARGET_EMAIL`,
+`CANARY_MAILBOX_SOURCE_ID`, `CANARY_ALERT_WEBHOOK_URL`) for the scheduled workflow to run.
+
+### 3. Manual parser testing
+The dashboard's "Probar Parser manual" button (and the underlying `POST /api/parse`
+endpoint) let you paste an arbitrary sender/subject/HTML and see the extraction result
+instantly — useful while tuning a new provider's prompt or fingerprint before it has
+fixtures and canary coverage.
 
 ---
 

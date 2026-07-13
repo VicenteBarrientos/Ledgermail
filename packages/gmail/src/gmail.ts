@@ -11,7 +11,7 @@ export function getOAuth2Client() {
   );
 }
 
-export function getAuthUrl(state?: string): string {
+export function getAuthUrl(state = "gmail"): string {
   const oauth2Client = getOAuth2Client();
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -28,15 +28,128 @@ export interface GmailTokenResponse {
   accessToken: string;
   refreshToken?: string | null;
   expiresAt?: number | null;
+  email?: string;
 }
 
 export async function getTokensFromCode(code: string): Promise<GmailTokenResponse> {
   const oauth2Client = getOAuth2Client();
   const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+
+  let email: string | undefined;
+  try {
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const me = await oauth2.userinfo.get();
+    email = me.data.email || undefined;
+  } catch (err) {
+    logger.warn("Could not fetch Google userinfo email after OAuth:", err);
+  }
+
   return {
     accessToken: tokens.access_token || "",
     refreshToken: tokens.refresh_token,
-    expiresAt: tokens.expiry_date
+    expiresAt: tokens.expiry_date,
+    email
+  };
+}
+
+/** Ensure mailbox has a valid access token (refresh if expired). */
+async function getAuthorizedGmail(mailboxSourceId: string) {
+  const mailbox = await db.mailboxSource.findUniqueOrThrow({
+    where: { id: mailboxSourceId }
+  });
+
+  const credentials = mailbox.credentials as {
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+  };
+  let accessToken = credentials.accessToken;
+  const refreshToken = credentials.refreshToken;
+
+  if (credentials.expiresAt && Date.now() > credentials.expiresAt) {
+    logger.info(`Access token expired for mailbox ${mailbox.emailAddress}. Refreshing...`);
+    if (!refreshToken) {
+      throw new Error("Mailbox credentials expired and no refresh token is stored. Reconnect Gmail.");
+    }
+    accessToken = await refreshAccessToken(refreshToken);
+    const expiresAt = Date.now() + 3500 * 1000;
+    await db.mailboxSource.update({
+      where: { id: mailboxSourceId },
+      data: {
+        credentials: {
+          ...credentials,
+          accessToken,
+          expiresAt
+        }
+      }
+    });
+  }
+
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials({ access_token: accessToken });
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+  return { gmail, mailbox };
+}
+
+export interface GmailOverviewMessage {
+  id: string;
+  threadId?: string | null;
+  subject: string;
+  from: string;
+  to: string;
+  date: string;
+  snippet: string;
+  labelIds: string[];
+}
+
+/**
+ * Read-only metadata scan for personal overview / ops (not bank pipeline).
+ * Default: last 90 days, inbox-ish traffic.
+ */
+export async function listGmailOverview(
+  mailboxSourceId: string,
+  options: { maxResults?: number; query?: string } = {}
+): Promise<{ emailAddress: string; query: string; messages: GmailOverviewMessage[] }> {
+  const maxResults = options.maxResults ?? 50;
+  const query = options.query ?? "newer_than:90d -category:promotions -category:social";
+  const { gmail, mailbox } = await getAuthorizedGmail(mailboxSourceId);
+
+  const response = await gmail.users.messages.list({
+    userId: "me",
+    q: query,
+    maxResults
+  });
+
+  const messages: GmailOverviewMessage[] = [];
+  for (const msg of response.data.messages || []) {
+    if (!msg.id) continue;
+    const details = await gmail.users.messages.get({
+      userId: "me",
+      id: msg.id,
+      format: "metadata",
+      metadataHeaders: ["From", "To", "Subject", "Date"]
+    });
+    const headers = details.data.payload?.headers || [];
+    const get = (name: string) =>
+      headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
+
+    messages.push({
+      id: msg.id,
+      threadId: details.data.threadId,
+      subject: get("Subject") || "(no subject)",
+      from: get("From"),
+      to: get("To"),
+      date: get("Date"),
+      snippet: details.data.snippet || "",
+      labelIds: details.data.labelIds || []
+    });
+  }
+
+  return {
+    emailAddress: mailbox.emailAddress,
+    query,
+    messages
   };
 }
 

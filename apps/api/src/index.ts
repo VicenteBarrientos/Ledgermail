@@ -5,7 +5,18 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, logger } from "@ledgermail/shared";
 import { db, EmailStatus } from "@ledgermail/database";
 import { parseEmailPipeline } from "@ledgermail/core";
-import { syncGmailMessages, getAuthUrl, getTokensFromCode } from "@ledgermail/gmail";
+import {
+  syncGmailMessages,
+  getAuthUrl,
+  getTokensFromCode,
+  listGmailOverview
+} from "@ledgermail/gmail";
+import {
+  getOutlookAuthUrl,
+  getOutlookTokensFromCode,
+  syncOutlookMessages,
+  listOutlookOverview
+} from "@ledgermail/outlook";
 
 const app = express();
 app.use(cors());
@@ -130,11 +141,59 @@ app.get("/api/mailboxes", async (req, res) => {
   }
 });
 
-// 3. POST /api/gmail/connect - Initiates Gmail OAuth or accepts authorization code
+async function upsertMailboxFromOAuth(opts: {
+  resolvedEmail: string;
+  name: string;
+  type: "GMAIL_OAUTH" | "OUTLOOK_OAUTH";
+  credentials: {
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresAt?: number | null;
+  };
+}) {
+  const user = await db.user.upsert({
+    where: { email: opts.resolvedEmail },
+    create: { email: opts.resolvedEmail },
+    update: {}
+  });
+
+  const existing = await db.mailboxSource.findFirst({
+    where: { emailAddress: opts.resolvedEmail, type: opts.type }
+  });
+
+  const credentials = {
+    accessToken: opts.credentials.accessToken,
+    refreshToken: opts.credentials.refreshToken,
+    expiresAt: opts.credentials.expiresAt
+  };
+
+  const mailbox = existing
+    ? await db.mailboxSource.update({
+        where: { id: existing.id },
+        data: {
+          userId: user.id,
+          name: opts.name || existing.name,
+          credentials
+        }
+      })
+    : await db.mailboxSource.create({
+        data: {
+          userId: user.id,
+          name: opts.name,
+          type: opts.type,
+          emailAddress: opts.resolvedEmail,
+          credentials
+        }
+      });
+
+  return { user, mailbox, reconnected: Boolean(existing) };
+}
+
+// 3. Gmail OAuth
 app.get("/api/gmail/auth-url", (req, res) => {
   try {
-    const url = getAuthUrl();
-    res.json({ url });
+    const url = getAuthUrl("gmail");
+    res.json({ url, provider: "gmail" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -142,36 +201,120 @@ app.get("/api/gmail/auth-url", (req, res) => {
 
 app.post("/api/gmail/connect", async (req, res) => {
   try {
-    const { code, userId, name, emailAddress } = req.body;
-    if (!code || !userId) {
-      return res.status(400).json({ error: "Missing code or userId" });
+    const { code, name, emailAddress } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: "Missing code" });
     }
 
     const tokens = await getTokensFromCode(code);
-    
-    // Save token as a MailboxSource
-    const mailbox = await db.mailboxSource.create({
-      data: {
-        userId,
-        name: name || "Gmail Inbox",
-        type: "GMAIL_OAUTH",
-        emailAddress: emailAddress || "gmail-sync@ledgermail.com",
-        credentials: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresAt: tokens.expiresAt
-        }
-      }
+    const resolvedEmail =
+      tokens.email || emailAddress || "gmail-sync@ledgermail.com";
+
+    const { user, mailbox, reconnected } = await upsertMailboxFromOAuth({
+      resolvedEmail,
+      name: name || "Gmail Inbox",
+      type: "GMAIL_OAUTH",
+      credentials: tokens
     });
 
-    res.json({ success: true, mailboxId: mailbox.id });
+    res.json({
+      success: true,
+      mailboxId: mailbox.id,
+      emailAddress: resolvedEmail,
+      userId: user.id,
+      provider: "gmail",
+      reconnected
+    });
   } catch (error: any) {
-    logger.error("API error connecting mailbox:", error);
+    logger.error("API error connecting Gmail mailbox:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// 4. POST /api/gmail/sync - Manually trigger Gmail synchronization and parse pipeline
+// 3b. Outlook / Hotmail / M365 OAuth (Microsoft Graph)
+app.get("/api/outlook/auth-url", (req, res) => {
+  try {
+    const url = getOutlookAuthUrl("outlook");
+    res.json({ url, provider: "outlook" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/outlook/connect", async (req, res) => {
+  try {
+    const { code, name, emailAddress } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: "Missing code" });
+    }
+
+    const tokens = await getOutlookTokensFromCode(code);
+    const resolvedEmail =
+      tokens.email || emailAddress || "outlook-sync@ledgermail.com";
+
+    const { user, mailbox, reconnected } = await upsertMailboxFromOAuth({
+      resolvedEmail,
+      name: name || "Outlook / Hotmail",
+      type: "OUTLOOK_OAUTH",
+      credentials: tokens
+    });
+
+    res.json({
+      success: true,
+      mailboxId: mailbox.id,
+      emailAddress: resolvedEmail,
+      userId: user.id,
+      provider: "outlook",
+      reconnected
+    });
+  } catch (error: any) {
+    logger.error("API error connecting Outlook mailbox:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Read-only overview (Gmail or Outlook)
+app.get("/api/gmail/overview", async (req, res) => {
+  try {
+    const mailboxSourceId = String(req.query.mailboxSourceId || "");
+    const maxResults = Math.min(
+      parseInt(String(req.query.maxResults || "50"), 10) || 50,
+      100
+    );
+    const query = req.query.q ? String(req.query.q) : undefined;
+    if (!mailboxSourceId) {
+      return res.status(400).json({ error: "Missing mailboxSourceId" });
+    }
+    const overview = await listGmailOverview(mailboxSourceId, {
+      maxResults,
+      query
+    });
+    res.json(overview);
+  } catch (error: any) {
+    logger.error("API error gmail overview:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/outlook/overview", async (req, res) => {
+  try {
+    const mailboxSourceId = String(req.query.mailboxSourceId || "");
+    const maxResults = Math.min(
+      parseInt(String(req.query.maxResults || "50"), 10) || 50,
+      100
+    );
+    if (!mailboxSourceId) {
+      return res.status(400).json({ error: "Missing mailboxSourceId" });
+    }
+    const overview = await listOutlookOverview(mailboxSourceId, { maxResults });
+    res.json(overview);
+  } catch (error: any) {
+    logger.error("API error outlook overview:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. Sync — dispatches by mailbox type (Gmail or Outlook)
 app.post("/api/gmail/sync", async (req, res) => {
   try {
     const { mailboxSourceId, maxResults = 10 } = req.body;
@@ -179,8 +322,17 @@ app.post("/api/gmail/sync", async (req, res) => {
       return res.status(400).json({ error: "Missing mailboxSourceId" });
     }
 
-    // Pull messages from Gmail
-    const messages = await syncGmailMessages(mailboxSourceId, maxResults);
+    const mailbox = await db.mailboxSource.findUnique({
+      where: { id: mailboxSourceId }
+    });
+    if (!mailbox) {
+      return res.status(404).json({ error: "Mailbox not found" });
+    }
+
+    const messages =
+      mailbox.type === "OUTLOOK_OAUTH"
+        ? await syncOutlookMessages(mailboxSourceId, maxResults)
+        : await syncGmailMessages(mailboxSourceId, maxResults);
     const results = [];
     let successCount = 0;
     let reviewCount = 0;
