@@ -4,8 +4,10 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/client"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/client"
+  // Vercel serverless (Amazon Linux 2023 / OpenSSL 3)
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 model User {
