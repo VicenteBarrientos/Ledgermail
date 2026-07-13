@@ -1,7 +1,9 @@
 {
   "functions": {
     "api/index.ts": {
-      "includeFiles": "{libquery_engine*.so.node,query_engine*,api/libquery_engine*.so.node,api/*.node,../../packages/database/src/generated/client/**}"
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "{api/server.js,api/*.node,api/libquery_engine*,libquery_engine*,**/*.node,../../packages/database/src/generated/client/**}"
     }
   },
   "rewrites": [

@@ -108,4 +108,4 @@ Azure app used locally: display name `dgerMail local` (typo OK). Secret must be 
 | Fecha | Nota |
 |-------|------|
 | 2026-07-13 | Outlook Graph package + dual connect; Gmail+Hotmail live locally; handoff created; commit/push/deploy this change set. |
-| 2026-07-13 | Prod API 500: `Cannot find module '/var/task/no…` (Prisma engine). Fix: binaryTargets rhel-openssl-3.0.x + copy-engines into `api/` + vercel includeFiles. |
+| 2026-07-13 | Prod API 500 root cause: `Cannot find module @ledgermail/shared/src/index.ts` — Vercel entry imported TS workspace packages. Fix: esbuild → `api/server.js`, thin `api/index.ts` requires bundle only. |
