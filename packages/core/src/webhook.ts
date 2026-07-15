@@ -65,12 +65,17 @@ export async function dispatchTransactionWebhook(transaction: any, email: any): 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "User-Agent": "LedgerMail-Webhook-Dispatcher/1.0"
+    };
+    if (config.api.condosyncWebhookSecret) {
+      headers["X-LedgerMail-Token"] = config.api.condosyncWebhookSecret;
+    }
+
     const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "LedgerMail-Webhook-Dispatcher/1.0"
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal
     });

@@ -47,6 +47,7 @@ export const config = {
     port: parseInt(process.env.PORT || "3001", 10),
     cronSecret: process.env.CRON_SECRET || "local-cron-secret",
     condosyncWebhookUrl: process.env.CONDOSYNC_WEBHOOK_URL || "",
+    condosyncWebhookSecret: process.env.CONDOSYNC_WEBHOOK_SECRET || "",
     apiBaseUrl: process.env.API_BASE_URL || "",
   },
   flags: {
